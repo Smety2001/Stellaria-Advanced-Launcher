@@ -12,6 +12,7 @@ from CTkMessagebox import CTkMessagebox
 from pynput.mouse import Controller
 import win32con
 import threading
+import sys
 
 user32 = ctypes.windll.user32
 monitor_info = GetMonitorInfo(MonitorFromPoint((0,0)))
@@ -21,11 +22,21 @@ work_area_width = work_area[2]
 work_area_height = work_area[3]
 title_bar_height = user32.GetSystemMetrics(4)
 
+try:
+    is_admin = ctypes.windll.shell32.IsUserAnAdmin()
+except:
+    is_admin = False
+
+if not is_admin:
+    ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
+    sys.exit()
+
 directory = os.path.dirname(os.path.abspath(__file__))
 file_path = os.path.join(directory, "advanced_settings.txt")
 exe_path = os.path.join(directory, "start.exe")
 config_path = os.path.join(directory, "settings.cfg")
 update_path = os.path.join(directory, ".Stellaria-launcher.exe")
+crash_path = os.path.join(directory, "CrashSender1500.exe")
 
 if os.path.exists(file_path):
     with open(file_path, 'r') as file:
@@ -369,6 +380,7 @@ class App(customtkinter.CTk):
             for key in key_lines:
                 file.write((key) + "\n")
         access_time_timestamp = os.path.getatime(config_path)
+        os.remove(crash_path)
         process = subprocess.Popen([exe_path])
         pids.append(process.pid)
 
