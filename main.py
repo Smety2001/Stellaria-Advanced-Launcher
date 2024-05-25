@@ -1,5 +1,5 @@
 import os
-from win32api import GetMonitorInfo, MonitorFromPoint
+import win32api
 import ctypes
 import subprocess
 import time
@@ -14,7 +14,7 @@ import win32con
 import threading
 
 user32 = ctypes.windll.user32
-monitor_info = GetMonitorInfo(MonitorFromPoint((0,0)))
+monitor_info = win32api.GetMonitorInfo(win32api.MonitorFromPoint((0,0)))
 work_area = monitor_info.get("Work")
 
 work_area_width = work_area[2]
@@ -123,39 +123,46 @@ class App(customtkinter.CTk):
         size_validation = (self.register(self.size_val), "%P")
         fps_validation = (self.register(self.fps_val), "%P")
 
+        # monitor selection
+        self.shadow_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Monitor", font=customtkinter.CTkFont(size=15))
+        self.shadow_label.grid(row=1, column=0, sticky="nw", padx=2, pady=2)
+        self.display_optionas = []
+        self.display_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Video"), dynamic_resizing=True, values=self.display_optionas)
+        self.display_optionmenu.grid(row=1, column=1, padx=2, pady=2, sticky="nw")
+
         # width_start
         self.width_start_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Width Start (0-100%)", font=customtkinter.CTkFont(size=15))
-        self.width_start_label.grid(row=1, column=0, sticky="nw", padx=2, pady=2)
+        self.width_start_label.grid(row=2, column=0, sticky="nw", padx=2, pady=2)
         self.width_start_entry = customtkinter.CTkEntry(self.tabview.tab("Video"), validate="key", validatecommand=size_validation)
-        self.width_start_entry.grid(row=1, column=1, padx=2, pady=2, sticky="nw")
+        self.width_start_entry.grid(row=2, column=1, padx=2, pady=2, sticky="nw")
 
         # width_end
         self.width_end_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Width End (0-100%)", font=customtkinter.CTkFont(size=15))
-        self.width_end_label.grid(row=2, column=0, sticky="nw", padx=2, pady=2)
+        self.width_end_label.grid(row=3, column=0, sticky="nw", padx=2, pady=2)
         self.width_end_entry = customtkinter.CTkEntry(self.tabview.tab("Video"), validate="key", validatecommand=size_validation)
-        self.width_end_entry.grid(row=2, column=1, padx=2, pady=2, sticky="nw")
+        self.width_end_entry.grid(row=3, column=1, padx=2, pady=2, sticky="nw")
 
         # height_start
         self.height_start_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Height Start (0-100%)", font=customtkinter.CTkFont(size=15))
-        self.height_start_label.grid(row=3, column=0, sticky="nw", padx=2, pady=2)
+        self.height_start_label.grid(row=4, column=0, sticky="nw", padx=2, pady=2)
         self.height_start_entry = customtkinter.CTkEntry(self.tabview.tab("Video"), validate="key", validatecommand=size_validation)
-        self.height_start_entry.grid(row=3, column=1, padx=2, pady=2, sticky="nw")
+        self.height_start_entry.grid(row=4, column=1, padx=2, pady=2, sticky="nw")
 
         # height_end
         self.height_end_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Height End (0-100%)", font=customtkinter.CTkFont(size=15))
-        self.height_end_label.grid(row=4, column=0, sticky="nw", padx=2, pady=2)
+        self.height_end_label.grid(row=5, column=0, sticky="nw", padx=2, pady=2)
         self.height_end_entry = customtkinter.CTkEntry(self.tabview.tab("Video"), validate="key", validatecommand=size_validation)
-        self.height_end_entry.grid(row=4, column=1, padx=2, pady=2, sticky="nw")
+        self.height_end_entry.grid(row=5, column=1, padx=2, pady=2, sticky="nw")
 
         # fps
         self.fps_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Max FPS (1-360)", font=customtkinter.CTkFont(size=15))
-        self.fps_label.grid(row=5, column=0, sticky="nw", padx=2, pady=2)
+        self.fps_label.grid(row=6, column=0, sticky="nw", padx=2, pady=2)
         self.fps_entry = customtkinter.CTkEntry(self.tabview.tab("Video"), validate="key", validatecommand=fps_validation)
-        self.fps_entry.grid(row=5, column=1, padx=2, pady=2, sticky="nw")
+        self.fps_entry.grid(row=6, column=1, padx=2, pady=2, sticky="nw")
 
         # fullscreen
         self.fullscreen_switch = customtkinter.CTkSwitch(self.tabview.tab("Video"), text="Fullscreen")
-        self.fullscreen_switch.grid(row=6, column=0, padx=2, pady=2, sticky="nw")
+        self.fullscreen_switch.grid(row=7, column=0, padx=2, pady=2, sticky="nw")
 
         # setup audio tab
         self.audio_label = customtkinter.CTkLabel(self.tabview.tab("Audio"), text="Audio", font=customtkinter.CTkFont(size=20, weight="bold"))
