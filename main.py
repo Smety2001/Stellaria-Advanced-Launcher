@@ -317,8 +317,12 @@ class App(customtkinter.CTk):
         windows_to_start = []
         for window, start in zip(self.settings, self.to_start):
             if start == 1:
-                x = int((int(window[1][0]) / 100) * work_area_width) -8
-                y = int((int(window[1][2]) / 100) * work_area_height)
+                if self.fullscreen_switch.get() == 1:
+                    x = 1920
+                    y = 1080
+                else:    
+                    x = int((int(window[1][0]) / 100) * work_area_width) -8
+                    y = int((int(window[1][2]) / 100) * work_area_height)
                 windows_to_start.append([x,y,self.combine_values(window[1])])
 
         if self.update_checkbox.get() == 1:
@@ -383,6 +387,7 @@ class App(customtkinter.CTk):
                         process = subprocess.Popen([exe_path])
                         pids.append(process.pid)
                         break
+
         if self.fullscreen_switch.get() == 0:
             hwnds = []
             com = []
