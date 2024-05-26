@@ -12,7 +12,7 @@ from CTkMessagebox import CTkMessagebox
 from pynput.mouse import Controller
 import win32con
 import threading
-from PIL import Image
+import win32ui
 
 user32 = ctypes.windll.user32
 monitor_info = win32api.GetMonitorInfo(win32api.MonitorFromPoint((0,0)))
@@ -29,18 +29,21 @@ config_path = os.path.join(directory, "settings.cfg")
 update_path = os.path.join(directory, ".Stellaria-launcher.exe")
 icon_path = os.path.join(directory, "icon.ico")
 
-large, small = win32gui.ExtractIconEx(update_path, 0)
-hicon = large[0]
+ico_x = win32api.GetSystemMetrics(win32con.SM_CXICON)
+ico_y = win32api.GetSystemMetrics(win32con.SM_CYICON)
 
-icon_info = win32gui.GetIconInfo(hicon)
-hbm = icon_info[4]
+large, small = win32gui.ExtractIconEx(update_path,0)
+win32gui.DestroyIcon(small[0])
 
-bmpstr = win32gui.GetBitmapBits(hbm, True)
-image = Image.frombuffer('RGBA', (32, 32), bmpstr, 'raw', 'BGRA', 0, 1)
+hdc = win32ui.CreateDCFromHandle( win32gui.GetDC(0) )
+hbmp = win32ui.CreateBitmap()
+hbmp.CreateCompatibleBitmap( hdc, ico_x, ico_x )
+hdc = hdc.CreateCompatibleDC()
 
-image.save(icon_path, format='ICO')
+hdc.SelectObject( hbmp )
+hdc.DrawIcon( (0,0), large[0] )
 
-win32gui.DestroyIcon(hicon)
+hbmp.SaveBitmapFile( hdc, icon_path) 
 
 if os.path.exists(file_path):
     with open(file_path, 'r') as file:
