@@ -13,6 +13,7 @@ from pynput.mouse import Controller
 import win32con
 import threading
 import win32ui
+import sys
 
 user32 = ctypes.windll.user32
 monitor_info = win32api.GetMonitorInfo(win32api.MonitorFromPoint((0,0)))
