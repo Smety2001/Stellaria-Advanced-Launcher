@@ -12,15 +12,6 @@ from CTkMessagebox import CTkMessagebox
 from pynput.mouse import Controller
 import win32con
 import threading
-import win32ui
-
-user32 = ctypes.windll.user32
-monitor_info = win32api.GetMonitorInfo(win32api.MonitorFromPoint((0,0)))
-work_area = monitor_info.get("Work")
-
-work_area_width = work_area[2]
-work_area_height = work_area[3]
-title_bar_height = user32.GetSystemMetrics(4)
 
 directory = os.path.dirname(os.path.abspath(__file__))
 file_path = os.path.join(directory, "advanced_settings.txt")
@@ -129,8 +120,7 @@ class App(customtkinter.CTk):
         # monitor selection
         self.shadow_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Monitor", font=customtkinter.CTkFont(size=15))
         self.shadow_label.grid(row=1, column=0, sticky="nw", padx=2, pady=2)
-        self.display_optionas = self.get_screens()
-        self.display_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Video"), dynamic_resizing=True, values=self.display_optionas)
+        self.display_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Video"), dynamic_resizing=True, values=["DISPLAY1"], command=self.check_screens)
         self.display_optionmenu.grid(row=1, column=1, padx=2, pady=2, sticky="nw")
 
         # width_start
@@ -309,15 +299,29 @@ class App(customtkinter.CTk):
         self.checkboxes = []
         self.delete_buttons = []
         self.edit_buttons = []
+        self.minfo = []
         self.settings = []
         self.to_start = []
-        self.defaults = ['0','100','0','100','60',0,0,0.000,1,1,1,1,1,1,90,1.000,5,9,1,0,1,1,1,1,1,1]
+        self.defaults = ['0','100','0','100','60',0,0,0.000,1,1,1,1,1,1,90,1.000,5,9,1,0,1,1,1,1,1,1,"DISPLAY1"]
         self.get_saved_values()
         self.bind("<<BackgroundTaskFinished>>", lambda event: self.show_all())
+    
+    def get_monitor_info(self):
+        minfo = []
+        for monitor in win32api.EnumDisplayMonitors():
+            m_info = win32api.GetMonitorInfo(monitor[0])
+            minfo.append(m_info)
+        self.minfo = minfo.copy()
 
-    def get_screens(self):
-        pass
-
+    def check_screens(self,value):
+        device = []
+        for monitor in win32api.EnumDisplayMonitors():
+            m_info = win32api.GetMonitorInfo(monitor[0])
+            device.append(m_info.get('Device').split("\\")[-1])
+        if value not in device:
+            self.display_optionmenu.set(device[0])
+        self.display_optionmenu.configure(values=device.copy())
+    
     def hide_all(self):
         self.start_frame.grid_forget()
         self.sidebar_frame.grid_forget()
@@ -327,15 +331,21 @@ class App(customtkinter.CTk):
         self.loading.grid(row=0, column=0, rowspan=50, columnspan=50, sticky="nsew", padx=20, pady=20)
     def open_stellarai(self):
         ctypes.windll.user32.SetThreadDpiAwarenessContext(ctypes.c_void_p(-1))
+
         windows_to_start = []
         for window, start in zip(self.settings, self.to_start):
             if start == 1:
                 if self.fullscreen_switch.get() == 1:
                     x = 1920
                     y = 1080
-                else:    
-                    x = int((int(window[1][0]) / 100) * work_area_width) -8
-                    y = int((int(window[1][2]) / 100) * work_area_height)
+                else:
+                    work_area = []
+                    for item in self.minfo:
+                        if item['Device'].split("\\")[-1] == window[1][26]:
+                            work_area = item['Work']
+                            break
+                    x = int((int(window[1][0]) / 100) * (work_area[2]-work_area[0])) -8 + work_area[0]
+                    y = int((int(window[1][2]) / 100) * (work_area[3]-work_area[1])) + work_area[1]
                 windows_to_start.append([x,y,self.combine_values(window[1])])
 
         if self.update_checkbox.get() == 1:
@@ -476,12 +486,17 @@ class App(customtkinter.CTk):
                     return
 
         self.hide_all()
+        self.get_monitor_info()
         open_met = threading.Thread(target=self.open_stellarai)
         open_met.start()
     def combine_values(self, values):
-
-        width = math.ceil(((abs(int(values[1])-int(values[0]))) / 100) * work_area_width)
-        height = math.ceil((((abs(int(values[3])-int(values[2])))/ 100) * work_area_height) - title_bar_height - 8)
+        work_area = []
+        for item in self.minfo:
+            if item['Device'].split("\\")[-1] == values[26]:
+                work_area = item['Work']
+                break
+        width = math.ceil(((abs(int(values[1])-int(values[0]))) / 100) * (work_area[2] - work_area[0]))
+        height = math.ceil((((abs(int(values[3])-int(values[2]))) / 100) * (work_area[3] - work_area[1])) - ctypes.windll.user32.GetSystemMetrics(4) - 8)
 
         mylist = ["WIDTH "+str(width),
                   "HEIGHT "+str(height),
@@ -636,6 +651,7 @@ class App(customtkinter.CTk):
         self.multidmg_switch.select() if values[23] == 1 else self.multidmg_switch.deselect()
         self.ime_switch.select() if values[24] == 1 else self.ime_switch.deselect()
         self.pickup_switch.select() if values[25] == 1 else self.pickup_switch.deselect()
+        self.display_optionmenu.set(values[26])
     def get_values(self):
         values = [self.width_start_entry.get(),
                   self.width_end_entry.get(),
@@ -662,7 +678,8 @@ class App(customtkinter.CTk):
                    self.damage_switch.get(),
                    self.multidmg_switch.get(),
                    self.ime_switch.get(),
-                   self.pickup_switch.get()]
+                   self.pickup_switch.get(),
+                   self.display_optionmenu.get()]
         return values
     def sidebar_delete_window(self, b_id):
         for delete_button in self.delete_buttons:
