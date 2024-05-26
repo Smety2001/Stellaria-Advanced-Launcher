@@ -12,6 +12,7 @@ from CTkMessagebox import CTkMessagebox
 from pynput.mouse import Controller
 import win32con
 import threading
+from PIL import Image
 
 user32 = ctypes.windll.user32
 monitor_info = win32api.GetMonitorInfo(win32api.MonitorFromPoint((0,0)))
@@ -26,6 +27,20 @@ file_path = os.path.join(directory, "advanced_settings.txt")
 exe_path = os.path.join(directory, "start.exe")
 config_path = os.path.join(directory, "settings.cfg")
 update_path = os.path.join(directory, ".Stellaria-launcher.exe")
+icon_path = os.path.join(directory, "icon.ico")
+
+large, small = win32gui.ExtractIconEx(update_path, 0)
+hicon = large[0]
+
+icon_info = win32gui.GetIconInfo(hicon)
+hbm = icon_info[4]
+
+bmpstr = win32gui.GetBitmapBits(hbm, True)
+image = Image.frombuffer('RGBA', (32, 32), bmpstr, 'raw', 'BGRA', 0, 1)
+
+image.save(icon_path, format='ICO')
+
+win32gui.DestroyIcon(hicon)
 
 if os.path.exists(file_path):
     with open(file_path, 'r') as file:
@@ -60,6 +75,7 @@ class App(customtkinter.CTk):
         # Set the geometry of the window
         self.title("Stellaria Advanced Launcher")
         self.geometry(f"{window_width}x{window_height}+{x}+{y}")
+        self.wm_iconbitmap(icon_path)
 
         # configure grid layout (3x3)
         self.grid_columnconfigure(1, weight=1)
