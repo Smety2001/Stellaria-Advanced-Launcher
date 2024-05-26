@@ -13,7 +13,6 @@ from pynput.mouse import Controller
 import win32con
 import threading
 import win32ui
-import sys
 
 user32 = ctypes.windll.user32
 monitor_info = win32api.GetMonitorInfo(win32api.MonitorFromPoint((0,0)))
@@ -29,22 +28,6 @@ exe_path = os.path.join(directory, "start.exe")
 config_path = os.path.join(directory, "settings.cfg")
 update_path = os.path.join(directory, ".Stellaria-launcher.exe")
 icon_path = os.path.join(directory, "icon.ico")
-
-ico_x = win32api.GetSystemMetrics(win32con.SM_CXICON)
-ico_y = win32api.GetSystemMetrics(win32con.SM_CYICON)
-
-large, small = win32gui.ExtractIconEx(update_path,0)
-win32gui.DestroyIcon(small[0])
-
-hdc = win32ui.CreateDCFromHandle( win32gui.GetDC(0) )
-hbmp = win32ui.CreateBitmap()
-hbmp.CreateCompatibleBitmap( hdc, ico_x, ico_x )
-hdc = hdc.CreateCompatibleDC()
-
-hdc.SelectObject( hbmp )
-hdc.DrawIcon( (0,0), large[0] )
-
-hbmp.SaveBitmapFile( hdc, icon_path) 
 
 if os.path.exists(file_path):
     with open(file_path, 'r') as file:
@@ -79,7 +62,10 @@ class App(customtkinter.CTk):
         # Set the geometry of the window
         self.title("Stellaria Advanced Launcher")
         self.geometry(f"{window_width}x{window_height}+{x}+{y}")
-        self.wm_iconbitmap(icon_path)
+        if os.path.exists(update_path):
+            if not os.path.exists(icon_path):
+                self.get_icon()
+            self.wm_iconbitmap(icon_path)
 
         # configure grid layout (3x3)
         self.grid_columnconfigure(1, weight=1)
@@ -146,7 +132,7 @@ class App(customtkinter.CTk):
         # monitor selection
         self.shadow_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Monitor", font=customtkinter.CTkFont(size=15))
         self.shadow_label.grid(row=1, column=0, sticky="nw", padx=2, pady=2)
-        self.display_optionas = []
+        self.display_optionas = self.get_screens()
         self.display_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Video"), dynamic_resizing=True, values=self.display_optionas)
         self.display_optionmenu.grid(row=1, column=1, padx=2, pady=2, sticky="nw")
 
@@ -332,6 +318,23 @@ class App(customtkinter.CTk):
         self.get_saved_values()
         self.bind("<<BackgroundTaskFinished>>", lambda event: self.show_all())
 
+    def get_screens(self):
+        pass
+
+    def get_icon(self):
+        ico_x = win32api.GetSystemMetrics(win32con.SM_CXICON)
+        ico_y = win32api.GetSystemMetrics(win32con.SM_CYICON)
+
+        large, small = win32gui.ExtractIconEx(update_path,0)
+        win32gui.DestroyIcon(small[0])
+
+        hdc = win32ui.CreateDCFromHandle( win32gui.GetDC(0))
+        hbmp = win32ui.CreateBitmap()
+        hbmp.CreateCompatibleBitmap(hdc, ico_x, ico_y)
+        hdc = hdc.CreateCompatibleDC()
+        hdc.SelectObject(hbmp)
+        hdc.DrawIcon((0,0), large[0])
+        hbmp.SaveBitmapFile( hdc, icon_path) 
     def hide_all(self):
         self.start_frame.grid_forget()
         self.sidebar_frame.grid_forget()
