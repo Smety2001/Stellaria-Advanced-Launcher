@@ -27,7 +27,6 @@ file_path = os.path.join(directory, "advanced_settings.txt")
 exe_path = os.path.join(directory, "start.exe")
 config_path = os.path.join(directory, "settings.cfg")
 update_path = os.path.join(directory, ".Stellaria-launcher.exe")
-icon_path = os.path.join(directory, "icon.ico")
 
 if os.path.exists(file_path):
     with open(file_path, 'r') as file:
@@ -63,9 +62,7 @@ class App(customtkinter.CTk):
         self.title("Stellaria Advanced Launcher")
         self.geometry(f"{window_width}x{window_height}+{x}+{y}")
         if os.path.exists(update_path):
-            if not os.path.exists(icon_path):
-                self.get_icon()
-            self.wm_iconbitmap(icon_path)
+            self.wm_iconbitmap(update_path)
 
         # configure grid layout (3x3)
         self.grid_columnconfigure(1, weight=1)
@@ -321,20 +318,6 @@ class App(customtkinter.CTk):
     def get_screens(self):
         pass
 
-    def get_icon(self):
-        ico_x = win32api.GetSystemMetrics(win32con.SM_CXICON)
-        ico_y = win32api.GetSystemMetrics(win32con.SM_CYICON)
-
-        large, small = win32gui.ExtractIconEx(update_path,0)
-        win32gui.DestroyIcon(small[0])
-
-        hdc = win32ui.CreateDCFromHandle( win32gui.GetDC(0))
-        hbmp = win32ui.CreateBitmap()
-        hbmp.CreateCompatibleBitmap(hdc, ico_x, ico_y)
-        hdc = hdc.CreateCompatibleDC()
-        hdc.SelectObject(hbmp)
-        hdc.DrawIcon((0,0), large[0])
-        hbmp.SaveBitmapFile( hdc, icon_path) 
     def hide_all(self):
         self.start_frame.grid_forget()
         self.sidebar_frame.grid_forget()
