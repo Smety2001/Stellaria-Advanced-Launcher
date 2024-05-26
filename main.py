@@ -15,7 +15,7 @@ import threading
 import sys
 
 if not ctypes.windll.shell32.IsUserAnAdmin():
-    ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
+    ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 0x0400)
     sys.exit()
 
 directory = os.path.dirname(os.path.abspath(__file__))
@@ -483,13 +483,19 @@ class App(customtkinter.CTk):
         
         self.to_start = to_start.copy()
 
-        for window, start in zip(self.settings,self.to_start):
+        for window, start, but in zip(self.settings,self.to_start,self.buttons):
             if start == 1:
                 if window[1][0] == "" or window[1][1] == "" or window[1][2] == "" or window[1][3] == "" or window[1][4] == "":
-                    for but in self.buttons:
-                        if but[0] == window[0]:
-                            win = but[1].cget("text")
-                    CTkMessagebox(master=self, title="Warning Message!", message=f"Please fill out all Video fields in {win} window", icon="warning")
+                    CTkMessagebox(master=self, title="Warning Message!", message=f"Please fill out all Video fields in {but[1].cget("text")}", icon="warning")
+                    self.start_button.configure(state="normal")
+                    return
+                device = []
+                for monitor in win32api.EnumDisplayMonitors():
+                    m_info = win32api.GetMonitorInfo(monitor[0])
+                    device.append(m_info.get('Device').split("\\")[-1])
+                if window[1][26] not in device:
+                    CTkMessagebox(master=self, title="Warning Message!", message=f"Please select a valid monitor in {but[1].cget("text")}", icon="warning")
+                    self.display_optionmenu.configure(values=device.copy())
                     self.start_button.configure(state="normal")
                     return
 
