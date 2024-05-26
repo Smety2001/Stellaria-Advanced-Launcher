@@ -12,6 +12,11 @@ from CTkMessagebox import CTkMessagebox
 from pynput.mouse import Controller
 import win32con
 import threading
+import sys
+
+if not ctypes.windll.shell32.IsUserAnAdmin():
+    ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
+    sys.exit()
 
 directory = os.path.dirname(os.path.abspath(__file__))
 file_path = os.path.join(directory, "advanced_settings.txt")
@@ -376,6 +381,9 @@ class App(customtkinter.CTk):
                 if read == read_new and write == write_new:
                     time.sleep(1)
                     os.kill(pidd,15)
+                    crash_path = os.path.join(directory, "CrashSender1500.exe")
+                    if os.path.exists(crash_path):
+                        os.remove(crash_path)
                     break
         
         key_lines = []
@@ -814,4 +822,3 @@ class App(customtkinter.CTk):
 if __name__ == "__main__":
     app = App()
     app.mainloop()
-
