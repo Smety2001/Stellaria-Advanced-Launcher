@@ -380,7 +380,10 @@ class App(customtkinter.CTk):
             for key in key_lines:
                 file.write((key) + "\n")
         access_time_timestamp = os.path.getatime(config_path)
-        os.remove(crash_path)
+
+        if os.path.exists(crash_path):
+            os.remove(crash_path)
+            
         process = subprocess.Popen([exe_path])
         pids.append(process.pid)
 
