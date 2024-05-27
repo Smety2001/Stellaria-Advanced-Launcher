@@ -1,18 +1,18 @@
 import os
+import sys
 import win32api
-import ctypes
-import subprocess
-import time
-import psutil
-import win32process
 import win32gui
-import math
+import win32con
+import win32process
+import ctypes
+from math import ceil
+from time import sleep
+import psutil
+import subprocess
+import threading
 import customtkinter
 from CTkMessagebox import CTkMessagebox
 from pynput.mouse import Controller
-import win32con
-import threading
-import sys
 
 if not ctypes.windll.shell32.IsUserAnAdmin():
     ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 0x0400)
@@ -21,8 +21,10 @@ if not ctypes.windll.shell32.IsUserAnAdmin():
 directory = os.path.dirname(os.path.abspath(__file__))
 file_path = os.path.join(directory, "advanced_settings.txt")
 exe_path = os.path.join(directory, "start.exe")
-config_path = os.path.join(directory, "settings.cfg")
 update_path = os.path.join(directory, ".Stellaria-launcher.exe")
+config_path = os.path.join(directory, "settings.cfg")
+exe_path = os.path.join(directory, "start.exe")
+crash_path = os.path.join(directory, "CrashSender1500.exe")
 
 if os.path.exists(file_path):
     with open(file_path, 'r') as file:
@@ -353,7 +355,7 @@ class App(customtkinter.CTk):
                     y = int((int(window[1][2]) / 100) * (work_area[3]-work_area[1])) + work_area[1]
                 windows_to_start.append([x,y,self.combine_values(window[1])])
 
-        if self.update_checkbox.get() == 1:
+        if self.update_checkbox.get() == 1 or not exe_path:
             uphwnds = []
             def updateEnumHandler(uphwnd, ctx):
                 if win32gui.IsWindowVisible(uphwnd):
@@ -374,26 +376,26 @@ class App(customtkinter.CTk):
                 io_counters = p.io_counters() 
                 read = io_counters[2]
                 write = io_counters[3]
-                time.sleep(10)
+                sleep(10)
                 io_counters_new = p.io_counters() 
                 read_new = io_counters_new[2]
                 write_new = io_counters_new[3]
                 if read == read_new and write == write_new:
-                    time.sleep(1)
+                    sleep(1)
                     os.kill(pidd,15)
-                    crash_path = os.path.join(directory, "CrashSender1500.exe")
                     if os.path.exists(crash_path):
                         os.remove(crash_path)
                     break
-        
-        key_lines = []
-        with open(config_path, 'r') as file:
-            lines = file.readlines()
-            for line in lines:
-                if line.startswith('KEY'):
-                    key_lines.append(line.strip())
 
-        pids = []        
+        key_lines = []
+        if os.path.exists(config_path): 
+            with open(config_path, 'r') as file:
+                lines = file.readlines()
+                for line in lines:
+                    if line.startswith('KEY'):
+                        key_lines.append(line.strip())
+
+        pids = []     
         with open(config_path, 'w') as file:
             for value in windows_to_start[0][2]:
                 file.write((value) + "\n")
@@ -408,7 +410,7 @@ class App(customtkinter.CTk):
                 while True:
                     access_time_timestamp_new = os.path.getatime(config_path)
                     if access_time_timestamp_new > access_time_timestamp:
-                        time.sleep(0.1)
+                        sleep(0.1)
                         with open(config_path, 'w') as file:
                             for value in window[2]:
                                 file.write((value) + "\n")
@@ -509,8 +511,8 @@ class App(customtkinter.CTk):
             if item['Device'].split("\\")[-1] == values[26]:
                 work_area = item['Work']
                 break
-        width = math.ceil(((abs(int(values[1])-int(values[0]))) / 100) * (work_area[2] - work_area[0]))
-        height = math.ceil((((abs(int(values[3])-int(values[2]))) / 100) * (work_area[3] - work_area[1])) - ctypes.windll.user32.GetSystemMetrics(4) - 8)
+        width = ceil(((abs(int(values[1])-int(values[0]))) / 100) * (work_area[2] - work_area[0]))
+        height = ceil((((abs(int(values[3])-int(values[2]))) / 100) * (work_area[3] - work_area[1])) - ctypes.windll.user32.GetSystemMetrics(4) - 8)
 
         mylist = ["WIDTH "+str(width),
                   "HEIGHT "+str(height),
