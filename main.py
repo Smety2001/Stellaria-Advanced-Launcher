@@ -125,7 +125,7 @@ class App(customtkinter.CTk):
         # monitor selection
         self.shadow_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Monitor", font=customtkinter.CTkFont(size=15))
         self.shadow_label.grid(row=1, column=0, sticky="nw", padx=2, pady=2)
-        self.display_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Video"), dynamic_resizing=True, values=["DISPLAY1"], command=self.check_screens)
+        self.display_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Video"), values=["DISPLAY1"], command=self.check_screens)
         self.display_optionmenu.grid(row=1, column=1, sticky="nw", padx=2, pady=2)
 
         # validation for size fields
@@ -135,25 +135,25 @@ class App(customtkinter.CTk):
         self.width_start_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Width Start (0-100%)", font=customtkinter.CTkFont(size=15))
         self.width_start_label.grid(row=2, column=0, sticky="nw", padx=2, pady=2)
         self.width_start_entry = customtkinter.CTkEntry(self.tabview.tab("Video"), validate="key", validatecommand=size_validation)
-        self.width_start_entry.grid(row=2, column=1, padx=2, pady=2, sticky="nw")
+        self.width_start_entry.grid(row=2, column=1, sticky="nw", padx=2, pady=2)
 
         # width_end
         self.width_end_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Width End (0-100%)", font=customtkinter.CTkFont(size=15))
         self.width_end_label.grid(row=3, column=0, sticky="nw", padx=2, pady=2)
         self.width_end_entry = customtkinter.CTkEntry(self.tabview.tab("Video"), validate="key", validatecommand=size_validation)
-        self.width_end_entry.grid(row=3, column=1, padx=2, pady=2, sticky="nw")
+        self.width_end_entry.grid(row=3, column=1, sticky="nw", padx=2, pady=2)
 
         # height_start
         self.height_start_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Height Start (0-100%)", font=customtkinter.CTkFont(size=15))
         self.height_start_label.grid(row=4, column=0, sticky="nw", padx=2, pady=2)
         self.height_start_entry = customtkinter.CTkEntry(self.tabview.tab("Video"), validate="key", validatecommand=size_validation)
-        self.height_start_entry.grid(row=4, column=1, padx=2, pady=2, sticky="nw")
+        self.height_start_entry.grid(row=4, column=1, sticky="nw", padx=2, pady=2)
 
         # height_end
         self.height_end_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Height End (0-100%)", font=customtkinter.CTkFont(size=15))
         self.height_end_label.grid(row=5, column=0, sticky="nw", padx=2, pady=2)
         self.height_end_entry = customtkinter.CTkEntry(self.tabview.tab("Video"), validate="key", validatecommand=size_validation)
-        self.height_end_entry.grid(row=5, column=1, padx=2, pady=2, sticky="nw")
+        self.height_end_entry.grid(row=5, column=1, sticky="nw", padx=2, pady=2)
 
         # validation for fps field
         fps_validation = (self.register(self.fps_val), "%P")
@@ -162,13 +162,13 @@ class App(customtkinter.CTk):
         self.fps_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Max FPS (1-360)", font=customtkinter.CTkFont(size=15))
         self.fps_label.grid(row=6, column=0, sticky="nw", padx=2, pady=2)
         self.fps_entry = customtkinter.CTkEntry(self.tabview.tab("Video"), validate="key", validatecommand=fps_validation)
-        self.fps_entry.grid(row=6, column=1, padx=2, pady=2, sticky="nw")
+        self.fps_entry.grid(row=6, column=1, sticky="nw", padx=2, pady=2)
 
         # fullscreen
         self.fullscreen_switch = customtkinter.CTkSwitch(self.tabview.tab("Video"), text="Fullscreen")
-        self.fullscreen_switch.grid(row=7, column=0, padx=2, pady=2, sticky="nw")
+        self.fullscreen_switch.grid(row=7, column=0, sticky="nw", padx=2, pady=2)
 
-        # setup audio tab
+        ### AUDTIO TAB ###
         self.audio_label = customtkinter.CTkLabel(self.tabview.tab("Audio"), text="Audio", font=customtkinter.CTkFont(size=20, weight="bold"))
         self.audio_label.grid(row=0, column=0, sticky="nw", padx=2, pady=2)
 
@@ -177,7 +177,7 @@ class App(customtkinter.CTk):
         self.sfx_label.grid(row=1, column=0, sticky="nw", padx=2, pady=2)
         self.sfx_number = customtkinter.IntVar(value=0)
         self.sfx_slider = customtkinter.CTkSlider(self.tabview.tab("Audio"), from_=0, to=5, number_of_steps=5, command=self.set_sfx)
-        self.sfx_slider.grid(row=1, column=1, padx=2, pady=2, sticky="ew")
+        self.sfx_slider.grid(row=1, column=1, sticky="ew", padx=2, pady=2)
         self.sfx_number_label = customtkinter.CTkLabel(self.tabview.tab("Audio"), textvariable=self.sfx_number, font=customtkinter.CTkFont(size=15))
         self.sfx_number_label.grid(row=1, column=2, sticky="nw", padx=2, pady=2)
 
@@ -189,44 +189,44 @@ class App(customtkinter.CTk):
         self.update_bgm_number_str()
         self.bgm_number.trace_add("write", self.on_bgm_number_change)
         self.bgm_slider = customtkinter.CTkSlider(self.tabview.tab("Audio"), from_=0, to=1, number_of_steps=20, command=self.set_bgm)
-        self.bgm_slider.grid(row=2, column=1, padx=2, pady=2, sticky="ew")
+        self.bgm_slider.grid(row=2, column=1, sticky="ew", padx=2, pady=2)
         self.bgm_number_label = customtkinter.CTkLabel(self.tabview.tab("Audio"), textvariable=self.bgm_number_str, font=customtkinter.CTkFont(size=15))
         self.bgm_number_label.grid(row=2, column=2, sticky="nw", padx=2, pady=2)
 
-        # setup effects tab
+        ### EFFECTS TAB ###
         self.visual_label = customtkinter.CTkLabel(self.tabview.tab("Effects"), text="Effects", font=customtkinter.CTkFont(size=20, weight="bold"))
         self.visual_label.grid(row=0, column=0, sticky="nw", padx=2, pady=2)
 
         # effects
         self.effects_switch = customtkinter.CTkSwitch(self.tabview.tab("Effects"), text="Show Effects")
-        self.effects_switch.grid(row=1, column=0, padx=2, pady=2, sticky="nw")
+        self.effects_switch.grid(row=1, column=0, sticky="nw", padx=2, pady=2,)
 
         # names
         self.names_switch = customtkinter.CTkSwitch(self.tabview.tab("Effects"), text="Show Names")
-        self.names_switch.grid(row=2, column=0, padx=2, pady=2, sticky="nw")
+        self.names_switch.grid(row=2, column=0, sticky="nw", padx=2, pady=2)
 
         # chat
         self.chat_switch = customtkinter.CTkSwitch(self.tabview.tab("Effects"), text="Show Chat")
-        self.chat_switch.grid(row=3, column=0, padx=2, pady=2, sticky="nw")
+        self.chat_switch.grid(row=3, column=0, sticky="nw", padx=2, pady=2)
 
         # glow + glitter
         self.glow_switch = customtkinter.CTkSwitch(self.tabview.tab("Effects"), text="Show Glow + Glitter")
-        self.glow_switch.grid(row=4, column=0, padx=2, pady=2, sticky="nw")
+        self.glow_switch.grid(row=4, column=0, sticky="nw", padx=2, pady=2)
 
         # model preview
         self.model_switch = customtkinter.CTkSwitch(self.tabview.tab("Effects"), text="Show Model Preview")
-        self.model_switch.grid(row=5, column=0, padx=2, pady=2, sticky="nw")
+        self.model_switch.grid(row=5, column=0, sticky="nw", padx=2, pady=2)
 
         # metin2 cursor
         self.cursor_switch = customtkinter.CTkSwitch(self.tabview.tab("Effects"), text="Use Stellaria Cursor")
-        self.cursor_switch.grid(row=6, column=0, padx=2, pady=2, sticky="nw")
+        self.cursor_switch.grid(row=6, column=0, sticky="nw", padx=2, pady=2)
 
         # fov
         self.fov_label = customtkinter.CTkLabel(self.tabview.tab("Effects"), text="FOV", font=customtkinter.CTkFont(size=15))
         self.fov_label.grid(row=7, column=0, sticky="nw", padx=2, pady=2)
         self.fov_number = customtkinter.IntVar(value=0)
         self.fov_slider = customtkinter.CTkSlider(self.tabview.tab("Effects"), from_=0, to=90, number_of_steps=90, command=self.set_fov)
-        self.fov_slider.grid(row=7, column=1, padx=2, pady=2, sticky="ew")
+        self.fov_slider.grid(row=7, column=1, sticky="ew", padx=2, pady=2)
         self.fov_number_label = customtkinter.CTkLabel(self.tabview.tab("Effects"), textvariable=self.fov_number, font=customtkinter.CTkFont(size=15))
         self.fov_number_label.grid(row=7, column=2, sticky="nw", padx=2, pady=2)
 
@@ -238,7 +238,7 @@ class App(customtkinter.CTk):
         self.update_transparent_number_str()
         self.transparent_number.trace_add("write", self.on_transparent_number_change)
         self.transparent_slider = customtkinter.CTkSlider(self.tabview.tab("Effects"), from_=0, to=1, number_of_steps=20, command=self.set_transparent)
-        self.transparent_slider.grid(row=8, column=1, padx=2, pady=2, sticky="ew")
+        self.transparent_slider.grid(row=8, column=1, sticky="ew", padx=2, pady=2)
         self.transparent_number_label = customtkinter.CTkLabel(self.tabview.tab("Effects"), textvariable=self.transparent_number_str, font=customtkinter.CTkFont(size=15))
         self.transparent_number_label.grid(row=8, column=2, sticky="nw", padx=2, pady=2)
 
@@ -246,49 +246,49 @@ class App(customtkinter.CTk):
         self.shadow_label = customtkinter.CTkLabel(self.tabview.tab("Effects"), text="Shadows", font=customtkinter.CTkFont(size=15))
         self.shadow_label.grid(row=9, column=0, sticky="nw", padx=2, pady=2)
         self.shadow_options = ["None", "Background", "Background + Player", "All - low", "All - Medium", "All - High"]
-        self.shadow_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Effects"), dynamic_resizing=True, values=self.shadow_options)
-        self.shadow_optionmenu.grid(row=9, column=1, padx=2, pady=2, sticky="nw")
+        self.shadow_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Effects"), width=175, values=self.shadow_options)
+        self.shadow_optionmenu.grid(row=9, column=1, sticky="nw", padx=2, pady=2)
 
         # skybox
         self.skybox_label = customtkinter.CTkLabel(self.tabview.tab("Effects"), text="Skybox", font=customtkinter.CTkFont(size=15))
         self.skybox_label.grid(row=10, column=0, sticky="nw", padx=2, pady=2)
         self.skybox_options = ["Auto", "1", "2", "3", "4", "5", "6", "7", "8", "Original"]
-        self.skybox_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Effects"), dynamic_resizing=True, values=self.skybox_options)
-        self.skybox_optionmenu.grid(row=10, column=1, padx=2, pady=2, sticky="nw")
+        self.skybox_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Effects"), width=175, values=self.skybox_options)
+        self.skybox_optionmenu.grid(row=10, column=1, sticky="nw", padx=2, pady=2)
 
-        # setup monsters tab
-        self.mob_label = customtkinter.CTkLabel(self.tabview.tab("Combat"), text="Combat", font=customtkinter.CTkFont(size=20, weight="bold"))
-        self.mob_label.grid(row=0, column=0, sticky="nw", padx=2, pady=2)
+        ### COMBAT TAB ###
+        self.combat_label = customtkinter.CTkLabel(self.tabview.tab("Combat"), text="Combat", font=customtkinter.CTkFont(size=20, weight="bold"))
+        self.combat_label.grid(row=0, column=0, sticky="nw", padx=2, pady=2)
 
         # pet skill used in chat
         self.petskill_switch = customtkinter.CTkSwitch(self.tabview.tab("Combat"), text="Show Pet's Skill Message")
-        self.petskill_switch.grid(row=1, column=0, padx=2, pady=2, sticky="nw")
+        self.petskill_switch.grid(row=1, column=0, sticky="nw", padx=2, pady=2)
 
-        self.mob_label = customtkinter.CTkLabel(self.tabview.tab("Combat"), text="Monsters", font=customtkinter.CTkFont(size=15, weight="bold", underline=True))
-        self.mob_label.grid(row=2, column=0, sticky="nw", padx=2, pady=2)
+        self.monsters_label = customtkinter.CTkLabel(self.tabview.tab("Combat"), text="Monsters", font=customtkinter.CTkFont(size=15, weight="bold", underline=True))
+        self.monsters_label.grid(row=2, column=0, sticky="nw", padx=2, pady=2)
 
         # dogmode
         self.dogmode_switch = customtkinter.CTkSwitch(self.tabview.tab("Combat"), text="Use Dog-mode")
-        self.dogmode_switch.grid(row=3, column=0, padx=2, pady=2, sticky="nw")
+        self.dogmode_switch.grid(row=3, column=0, sticky="nw", padx=2, pady=2)
 
         # mob level
         self.moblvl_switch = customtkinter.CTkSwitch(self.tabview.tab("Combat"), text="Show Monster's Level")
-        self.moblvl_switch.grid(row=4, column=0, padx=2, pady=2, sticky="nw")
+        self.moblvl_switch.grid(row=4, column=0, sticky="nw", padx=2, pady=2)
 
         # aggresive mob indicator
         self.agromob_switch = customtkinter.CTkSwitch(self.tabview.tab("Combat"), text="Show Aggresive Indicator (*)")
-        self.agromob_switch.grid(row=5, column=0, padx=2, pady=2, sticky="nw")
+        self.agromob_switch.grid(row=5, column=0, sticky="nw", padx=2, pady=2)
 
-        self.mob_label = customtkinter.CTkLabel(self.tabview.tab("Combat"), text="Damage", font=customtkinter.CTkFont(size=15, weight="bold", underline=True))
-        self.mob_label.grid(row=6, column=0, sticky="nw", padx=2, pady=2)
+        self.damage_label = customtkinter.CTkLabel(self.tabview.tab("Combat"), text="Damage", font=customtkinter.CTkFont(size=15, weight="bold", underline=True))
+        self.damage_label.grid(row=6, column=0, sticky="nw", padx=2, pady=2)
 
         # damage
         self.damage_switch = customtkinter.CTkSwitch(self.tabview.tab("Combat"), text="Show Damage")
-        self.damage_switch.grid(row=7, column=0, padx=2, pady=2, sticky="nw")
+        self.damage_switch.grid(row=7, column=0, sticky="nw", padx=2, pady=2,)
 
         # multiple targets damage
         self.multidmg_switch = customtkinter.CTkSwitch(self.tabview.tab("Combat"), text="Show Multi-target Damage")
-        self.multidmg_switch.grid(row=8, column=0, padx=2, pady=2, sticky="nw")
+        self.multidmg_switch.grid(row=8, column=0, sticky="nw", padx=2, pady=2)
 
         # setup functional tab
         self.visual_label = customtkinter.CTkLabel(self.tabview.tab("Functional"), text="Functional", font=customtkinter.CTkFont(size=20, weight="bold"))
@@ -296,11 +296,11 @@ class App(customtkinter.CTk):
 
         # IME
         self.ime_switch = customtkinter.CTkSwitch(self.tabview.tab("Functional"), text="Use Stellaria IME")
-        self.ime_switch.grid(row=1, column=0, padx=2, pady=2, sticky="nw")
+        self.ime_switch.grid(row=1, column=0, sticky="nw", padx=2, pady=2,)
 
         # Pickup
         self.pickup_switch = customtkinter.CTkSwitch(self.tabview.tab("Functional"), text="Pickup Everything")
-        self.pickup_switch.grid(row=2, column=0, padx=2, pady=2, sticky="nw")
+        self.pickup_switch.grid(row=2, column=0, sticky="nw", padx=2, pady=2)
 
         # prepare loading screen
         self.loading = customtkinter.CTkLabel(self, text="Starting... Please Wait", font=customtkinter.CTkFont(size=50))
