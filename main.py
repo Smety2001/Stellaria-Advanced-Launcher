@@ -1,72 +1,75 @@
-import os
-import sys
-import win32api
-import win32gui
-import win32con
-import win32process
-import ctypes
+# import dependencies
+from os import path, kill, remove
+from sys import executable, argv, exit
+from win32api import EnumDisplayMonitors, GetMonitorInfo
+from win32gui import IsWindowVisible, ShowWindow, EnumWindows, GetWindowRect, MoveWindow
+from win32con import SW_HIDE
+from win32process import GetWindowThreadProcessId
+from ctypes import windll, c_void_p
 from math import ceil
 from time import sleep
-import psutil
-import subprocess
-import threading
+from psutil import Process
+from subprocess import Popen
+from threading import Thread
 import customtkinter
 from CTkMessagebox import CTkMessagebox
 from pynput.mouse import Controller
 
-if not ctypes.windll.shell32.IsUserAnAdmin():
-    ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 0x0400)
-    sys.exit()
+# restart as admin if not admin
+if not windll.shell32.IsUserAnAdmin():
+    windll.shell32.ShellExecuteW(None, "runas", executable, " ".join(argv), None, 0x0400)
+    exit()
 
-directory = os.path.dirname(os.path.abspath(__file__))
-file_path = os.path.join(directory, "advanced_settings.txt")
-exe_path = os.path.join(directory, "start.exe")
-update_path = os.path.join(directory, ".Stellaria-launcher.exe")
-config_path = os.path.join(directory, "settings.cfg")
-exe_path = os.path.join(directory, "start.exe")
-crash_path = os.path.join(directory, "CrashSender1500.exe")
+# setup paths
+directory = path.dirname(path.abspath(__file__))
+save_path = path.join(directory, "advanced_settings.txt")
+exe_path = path.join(directory, "start.exe")
+update_path = path.join(directory, ".Stellaria-launcher.exe")
+config_path = path.join(directory, "settings.cfg")
+crash_path = path.join(directory, "CrashSender1500.exe")
 
-if os.path.exists(file_path):
-    with open(file_path, 'r') as file:
+# set to previously set scale if exists
+if path.exists(save_path):
+    with open(save_path, 'r') as file:
         lines = file.readlines()
-
-    inputted_values = []
     for line in lines:
-        inputted_values.append(eval(line.strip()))
-    
-    for val in inputted_values:
-        if val[0] == -3:
-            scale = round((int(val[1].replace("%", "")) / 100),1)
+        values = eval(line.strip())
+        if values[0] == -3:
+            scale = round((int(values[1].replace("%", "")) / 100), 1)
             customtkinter.set_widget_scaling(scale)
             customtkinter.set_window_scaling(scale)
 
+# set app theme
 customtkinter.set_appearance_mode("Dark")
 customtkinter.set_default_color_theme("blue")
 
+# main GUI app
 class App(customtkinter.CTk):
     def __init__(self):
         super().__init__()
 
         # configure window
+        self.title("Stellaria Advanced Launcher")
         window_width = 720
         window_height = 500
+        if path.exists(update_path):
+            self.wm_iconbitmap(update_path)
+
+        # find window center
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
         scale_factor = self._get_window_scaling()
         x = int(((screen_width/2) - (window_width/2)) * scale_factor)
         y = int(((screen_height/2) - (window_height/2)) * scale_factor)
-
-        # Set the geometry of the window
-        self.title("Stellaria Advanced Launcher")
+        
+        # open centered window
         self.geometry(f"{window_width}x{window_height}+{x}+{y}")
-        if os.path.exists(update_path):
-            self.wm_iconbitmap(update_path)
 
-        # configure grid layout (3x3)
+        # configure grid layout (3 rows x 2 columns)
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(1, weight=1)
 
-        # create sidebar frame with widgets
+        # create sidebar frame
         self.sidebar_frame = customtkinter.CTkScrollableFrame(self, width=220, corner_radius=0)
         self.sidebar_frame.grid(row=0, column=0, rowspan=2, sticky="nsew")
         self.sidebar_frame.columnconfigure(2, weight=1)
@@ -75,30 +78,30 @@ class App(customtkinter.CTk):
         self.sidebar_button_add = customtkinter.CTkButton(self.sidebar_frame, text="Add", command=self.sidebar_add_window)
         self.sidebar_button_add.grid(row=1, column=0, columnspan=4, sticky="nsew", padx=10, pady=10)
 
-        # create start button
+        # create start frame
         self.start_frame = customtkinter.CTkFrame(self, width=220, corner_radius=0)
         self.start_frame.grid(row=2, column=0, sticky="nsew")
-        self.start_frame.columnconfigure(1, weight=1)
-        self.update_checkbox = customtkinter.CTkCheckBox(self.start_frame, text="Check for Update?",hover_color="green",fg_color="green")
-        self.update_checkbox.grid(row=0, column=1, sticky="w", padx=(10,0))
-        self.start_button = customtkinter.CTkButton(self.start_frame, text="START", fg_color="green", hover_color="#006400", command=self.start, font=customtkinter.CTkFont(size=20, weight="bold"))
-        self.start_button.grid(row=1, column=0, columnspan=3, sticky="nsew", padx=(10,25), pady=10)
+        self.start_frame.columnconfigure(0, weight=1)
+        self.update_checkbox = customtkinter.CTkCheckBox(self.start_frame, text="Check for Update?", fg_color="green", hover_color="green")
+        self.update_checkbox.grid(row=0, column=0, sticky="w", padx=(10,0))
+        self.start_button = customtkinter.CTkButton(self.start_frame, text="START", fg_color="green", hover_color="#006400", font=customtkinter.CTkFont(size=20, weight="bold"), command=self.start)
+        self.start_button.grid(row=1, column=0, sticky="nsew", padx=(10,25), pady=10)
 
-        # create settings label
+        # create settings frame
         self.settings_frame = customtkinter.CTkFrame(self, fg_color=["gray92", "gray14"])
         self.settings_frame.grid(row=0, column=1, sticky="nsew")
         self.settings_frame.columnconfigure(3, weight=1)
         self.settings_label = customtkinter.CTkLabel(self.settings_frame, text="Settings", font=customtkinter.CTkFont(size=20, weight="bold"))
         self.settings_label.grid(row=0, column=1, columnspan=5, sticky="nsew", padx=20,pady=(20,3))
         self.scale_label = customtkinter.CTkLabel(self.settings_frame, text="Scale:", font=customtkinter.CTkFont(size=15))
-        self.scale_label.grid(row=0, column=1, sticky="w", padx=(10,0),pady=(20,3))
+        self.scale_label.grid(row=0, column=1, sticky="w", padx=(10,0), pady=(20,3))
         self.scale_optionmenu = customtkinter.CTkOptionMenu(self.settings_frame, values=["40%", "60%", "80%", "100%", "120%", "140%", "160%"], width=100, command=self.set_scale)
-        self.scale_optionmenu.grid(row=0, column=2, sticky="w", padx=(5,25),pady=(20,3))
-        self.scale_optionmenu.set("100%")
+        self.scale_optionmenu.grid(row=0, column=2, sticky="w", padx=(5,25), pady=(20,3))
+        self.scale_optionmenu.set("100%") #add to defaults later
         self.load_defaults_button = customtkinter.CTkButton(self.settings_frame, text="Paste", width=20, command=self.load_defaults)
-        self.load_defaults_button.grid(row=0, column=4, padx=(0,10), pady=(20,3), sticky="e")
+        self.load_defaults_button.grid(row=0, column=4, padx=(0,10), sticky="e", pady=(20,3))
         self.save_defaults_button = customtkinter.CTkButton(self.settings_frame, text="Copy", width=20, command=self.save_defaults)
-        self.save_defaults_button.grid(row=0, column=5, padx=(0,20), pady=(20,3), sticky="e")
+        self.save_defaults_button.grid(row=0, column=5, padx=(0,20), sticky="e", pady=(20,3))
 
         # create tabview
         self.tabview = customtkinter.CTkTabview(self)
@@ -115,20 +118,18 @@ class App(customtkinter.CTk):
         self.tabview.tab("Combat").grid_columnconfigure(0, weight=1)
         self.tabview.tab("Functional").grid_columnconfigure(0, weight=1)
 
-        self.loading = customtkinter.CTkLabel(self, text="Starting... Please Wait", font=customtkinter.CTkFont(size=50))
-
-        # setup video tab
+        ### VIDEO TAB ###
         self.video_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Video", font=customtkinter.CTkFont(size=20, weight="bold"))
         self.video_label.grid(row=0, column=0, sticky="nw", padx=2, pady=2)
-
-        size_validation = (self.register(self.size_val), "%P")
-        fps_validation = (self.register(self.fps_val), "%P")
 
         # monitor selection
         self.shadow_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Monitor", font=customtkinter.CTkFont(size=15))
         self.shadow_label.grid(row=1, column=0, sticky="nw", padx=2, pady=2)
         self.display_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Video"), dynamic_resizing=True, values=["DISPLAY1"], command=self.check_screens)
-        self.display_optionmenu.grid(row=1, column=1, padx=2, pady=2, sticky="nw")
+        self.display_optionmenu.grid(row=1, column=1, sticky="nw", padx=2, pady=2)
+
+        # validation for size fields
+        size_validation = (self.register(self.size_val), "%P")
 
         # width_start
         self.width_start_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Width Start (0-100%)", font=customtkinter.CTkFont(size=15))
@@ -154,6 +155,9 @@ class App(customtkinter.CTk):
         self.height_end_entry = customtkinter.CTkEntry(self.tabview.tab("Video"), validate="key", validatecommand=size_validation)
         self.height_end_entry.grid(row=5, column=1, padx=2, pady=2, sticky="nw")
 
+        # validation for fps field
+        fps_validation = (self.register(self.fps_val), "%P")
+        
         # fps
         self.fps_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Max FPS (1-360)", font=customtkinter.CTkFont(size=15))
         self.fps_label.grid(row=6, column=0, sticky="nw", padx=2, pady=2)
@@ -298,6 +302,9 @@ class App(customtkinter.CTk):
         self.pickup_switch = customtkinter.CTkSwitch(self.tabview.tab("Functional"), text="Pickup Everything")
         self.pickup_switch.grid(row=2, column=0, padx=2, pady=2, sticky="nw")
 
+        # prepare loading screen
+        self.loading = customtkinter.CTkLabel(self, text="Starting... Please Wait", font=customtkinter.CTkFont(size=50))
+
         # set default values
         self.protocol("WM_DELETE_WINDOW", self.close)
         self.current_window = 1
@@ -315,15 +322,15 @@ class App(customtkinter.CTk):
     
     def get_monitor_info(self):
         minfo = []
-        for monitor in win32api.EnumDisplayMonitors():
-            m_info = win32api.GetMonitorInfo(monitor[0])
+        for monitor in EnumDisplayMonitors():
+            m_info = GetMonitorInfo(monitor[0])
             minfo.append(m_info)
         self.minfo = minfo.copy()
 
     def check_screens(self,value):
         device = []
-        for monitor in win32api.EnumDisplayMonitors():
-            m_info = win32api.GetMonitorInfo(monitor[0])
+        for monitor in EnumDisplayMonitors():
+            m_info = GetMonitorInfo(monitor[0])
             device.append(m_info.get('Device').split("\\")[-1])
         if value not in device:
             self.display_optionmenu.set(device[0])
@@ -337,7 +344,7 @@ class App(customtkinter.CTk):
 
         self.loading.grid(row=0, column=0, rowspan=50, columnspan=50, sticky="nsew", padx=20, pady=20)
     def open_stellarai(self):
-        ctypes.windll.user32.SetThreadDpiAwarenessContext(ctypes.c_void_p(-1))
+        windll.user32.SetThreadDpiAwarenessContext(c_void_p(-1))
 
         windows_to_start = []
         for window, start in zip(self.settings, self.to_start):
@@ -358,17 +365,17 @@ class App(customtkinter.CTk):
         if self.update_checkbox.get() == 1 or not exe_path:
             uphwnds = []
             def updateEnumHandler(uphwnd, ctx):
-                if win32gui.IsWindowVisible(uphwnd):
-                    _, process_id = win32process.GetWindowThreadProcessId(uphwnd)
+                if IsWindowVisible(uphwnd):
+                    _, process_id = GetWindowThreadProcessId(uphwnd)
                     if process_id == ctx:
-                        win32gui.ShowWindow(uphwnd, win32con.SW_HIDE)
+                        ShowWindow(uphwnd, SW_HIDE)
                         uphwnds.append(uphwnd)
 
-            process = subprocess.Popen([update_path])
+            process = Popen([update_path])
             pidd = process.pid
-            p = psutil.Process(pidd)
+            p = Process(pidd)
             while True:
-                win32gui.EnumWindows(updateEnumHandler, pidd)
+                EnumWindows(updateEnumHandler, pidd)
                 if len(uphwnds) > 0:
                     break
 
@@ -382,13 +389,13 @@ class App(customtkinter.CTk):
                 write_new = io_counters_new[3]
                 if read == read_new and write == write_new:
                     sleep(1)
-                    os.kill(pidd,15)
-                    if os.path.exists(crash_path):
-                        os.remove(crash_path)
+                    kill(pidd,15)
+                    if path.exists(crash_path):
+                        remove(crash_path)
                     break
 
         key_lines = []
-        if os.path.exists(config_path): 
+        if path.exists(config_path): 
             with open(config_path, 'r') as file:
                 lines = file.readlines()
                 for line in lines:
@@ -401,14 +408,14 @@ class App(customtkinter.CTk):
                 file.write((value) + "\n")
             for key in key_lines:
                 file.write((key) + "\n")
-        access_time_timestamp = os.path.getatime(config_path)
-        process = subprocess.Popen([exe_path])
+        access_time_timestamp = path.getatime(config_path)
+        process = Popen([exe_path])
         pids.append(process.pid)
 
         if len(windows_to_start) > 1:
             for window in windows_to_start[1:]:
                 while True:
-                    access_time_timestamp_new = os.path.getatime(config_path)
+                    access_time_timestamp_new = path.getatime(config_path)
                     if access_time_timestamp_new > access_time_timestamp:
                         sleep(0.1)
                         with open(config_path, 'w') as file:
@@ -416,8 +423,8 @@ class App(customtkinter.CTk):
                                 file.write((value) + "\n")
                             for key in key_lines:
                                 file.write((key) + "\n")
-                        access_time_timestamp = os.path.getatime(config_path)
-                        process = subprocess.Popen([exe_path])
+                        access_time_timestamp = path.getatime(config_path)
+                        process = Popen([exe_path])
                         pids.append(process.pid)
                         break
 
@@ -428,19 +435,19 @@ class App(customtkinter.CTk):
                 com.append([win[0],win[1],pid])
 
             def winEnumHandler(hwnd, ctx):
-                if win32gui.IsWindowVisible(hwnd):
-                    _, process_id = win32process.GetWindowThreadProcessId(hwnd)
+                if IsWindowVisible(hwnd):
+                    _, process_id = GetWindowThreadProcessId(hwnd)
                     if process_id == ctx[2]:
-                        rect = win32gui.GetWindowRect(hwnd)
+                        rect = GetWindowRect(hwnd)
                         w = rect[2] - rect[0]
                         h = rect[3] - rect[1]
-                        win32gui.MoveWindow(hwnd, ctx[0], ctx[1], w, h, True)
+                        MoveWindow(hwnd, ctx[0], ctx[1], w, h, True)
                         hwnds.append(hwnd)
                         com.remove(ctx)
 
             while True:
                 for vals in com:
-                    win32gui.EnumWindows(winEnumHandler, vals)
+                    EnumWindows(winEnumHandler, vals)
                 if len(pids) == len(hwnds):
                     break
 
@@ -464,7 +471,7 @@ class App(customtkinter.CTk):
             return
         
         if self.update_checkbox.get() == 1:
-            if not os.path.exists(update_path):
+            if not path.exists(update_path):
                 CTkMessagebox(master=self, title="Warning Message!", message=f"Cannot find .Stellaria-launcher.exe, please rename your launcher", icon="warning")
                 self.start_button.configure(state="normal")
                 return
@@ -492,8 +499,8 @@ class App(customtkinter.CTk):
                     self.start_button.configure(state="normal")
                     return
                 device = []
-                for monitor in win32api.EnumDisplayMonitors():
-                    m_info = win32api.GetMonitorInfo(monitor[0])
+                for monitor in EnumDisplayMonitors():
+                    m_info = GetMonitorInfo(monitor[0])
                     device.append(m_info.get('Device').split("\\")[-1])
                 if window[1][26] not in device:
                     CTkMessagebox(master=self, title="Warning Message!", message=f"Please select a valid monitor in {but[1].cget("text")}", icon="warning")
@@ -503,7 +510,7 @@ class App(customtkinter.CTk):
 
         self.hide_all()
         self.get_monitor_info()
-        open_met = threading.Thread(target=self.open_stellarai)
+        open_met = Thread(target=self.open_stellarai)
         open_met.start()
     def combine_values(self, values):
         work_area = []
@@ -512,7 +519,7 @@ class App(customtkinter.CTk):
                 work_area = item['Work']
                 break
         width = ceil(((abs(int(values[1])-int(values[0]))) / 100) * (work_area[2] - work_area[0]))
-        height = ceil((((abs(int(values[3])-int(values[2]))) / 100) * (work_area[3] - work_area[1])) - ctypes.windll.user32.GetSystemMetrics(4) - 8)
+        height = ceil((((abs(int(values[3])-int(values[2]))) / 100) * (work_area[3] - work_area[1])) - windll.user32.GetSystemMetrics(4) - 8)
 
         mylist = ["WIDTH "+str(width),
                   "HEIGHT "+str(height),
@@ -550,8 +557,8 @@ class App(customtkinter.CTk):
                   "FREQUENCY "+str(values[4])]
         return mylist   
     def get_saved_values(self):
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as file:
+        if path.exists(save_path):
+            with open(save_path, 'r') as file:
                 lines = file.readlines()
 
             inputted_values = []
@@ -762,7 +769,7 @@ class App(customtkinter.CTk):
         for button in self.buttons:
             names.append(button[1].cget("text"))
 
-        with open(file_path, 'w') as file:
+        with open(save_path, 'w') as file:
             file.write(str([0,self.defaults]) + "\n")
             for window in self.settings:
                 file.write(str(window) + "\n")   
