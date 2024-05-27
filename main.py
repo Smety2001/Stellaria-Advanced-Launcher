@@ -345,6 +345,7 @@ class App(customtkinter.CTk):
         self.loading.grid(row=0, column=0, rowspan=50, columnspan=50, sticky="nsew", padx=20, pady=20)
     def open_stellarai(self):
         windll.user32.SetThreadDpiAwarenessContext(c_void_p(-1))
+        self.get_monitor_info()
 
         windows_to_start = []
         for window, start in zip(self.settings, self.to_start):
@@ -509,7 +510,6 @@ class App(customtkinter.CTk):
                     return
 
         self.hide_all()
-        self.get_monitor_info()
         open_met = Thread(target=self.open_stellarai)
         open_met.start()
     def combine_values(self, values):
