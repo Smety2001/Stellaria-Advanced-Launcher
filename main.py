@@ -130,7 +130,7 @@ class App(customtkinter.CTk):
         # monitor selection
         self.monitor_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Monitor", font=self.label_font)
         self.monitor_label.grid(row=1, column=0, sticky="nw", padx=2, pady=2)
-        self.display_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Video"), values=["DISPLAY1"], command=self.check_screens)
+        self.display_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Video"), values=self.get_monitor_values(), command=self.check_screens)
         self.display_optionmenu.grid(row=1, column=1, sticky="nw", padx=2, pady=2)
 
         # validation for size fields
@@ -319,10 +319,19 @@ class App(customtkinter.CTk):
         self.minfo = []
         self.settings = []
         self.to_start = []
-        self.defaults = ['0','100','0','100','60',0,0,0.000,1,1,1,1,1,1,90,1.000,5,9,1,0,1,1,1,1,1,1,"DISPLAY1"]
+        self.defaults = ['0','100','0','100','60',0,0,0.000,1,1,1,1,1,1,90,1.000,5,9,1,0,1,1,1,1,1,1,self.get_monitor_values()[0]]
         self.get_saved_values()
         self.bind("<<BackgroundTaskFinished>>", lambda event: self.show_all())
 
+    def get_monitor_values(self):
+        device = []
+        for monitor in EnumDisplayMonitors():
+            m_info = GetMonitorInfo(monitor[0])
+            if m_info.get('Flags') == 1:
+                device.append(m_info.get('Device').split("\\")[-1]+" (Main)")
+            else:
+                device.append(m_info.get('Device').split("\\")[-1])
+            return device
     def get_saved_values(self):
         if path.exists(save_path):
             with open(save_path, 'r') as file:
@@ -389,17 +398,13 @@ class App(customtkinter.CTk):
         device = []
         for monitor in EnumDisplayMonitors():
             m_info = GetMonitorInfo(monitor[0])
-            device.append(m_info.get('Device').split("\\")[-1])
+            if m_info.get('Flags') == 1:
+                device.append(m_info.get('Device').split("\\")[-1]+" (Main)")
+            else:
+                device.append(m_info.get('Device').split("\\")[-1])
         if value not in device:
             self.display_optionmenu.set(device[0])
         self.display_optionmenu.configure(values=device.copy())  
-    def hide_all(self):
-        self.start_frame.grid_forget()
-        self.sidebar_frame.grid_forget()
-        self.settings_frame.grid_forget()
-        self.tabview.grid_forget()
-
-        self.loading.grid(row=0, column=0, rowspan=50, columnspan=50, sticky="nsew", padx=20, pady=20)
     def open_stellaria(self):
         windll.user32.SetThreadDpiAwarenessContext(c_void_p(-1))
         self.get_monitor_info()
@@ -413,9 +418,10 @@ class App(customtkinter.CTk):
                 else:
                     work_area = []
                     for item in self.minfo:
-                        if item['Device'].split("\\")[-1] == window[1][26]:
+                        if item['Device'].split("\\")[-1] == window[1][26].split()[0]:
                             work_area = item['Work']
                             break
+                        print(work_area)
                     x = int((int(window[1][0]) / 100) * (work_area[2]-work_area[0])) -8 + work_area[0]
                     y = int((int(window[1][2]) / 100) * (work_area[3]-work_area[1])) + work_area[1]
                 windows_to_start.append([x,y,self.combine_values(window[1])])
@@ -510,16 +516,6 @@ class App(customtkinter.CTk):
                     break
 
         self.event_generate("<<BackgroundTaskFinished>>", when="tail")
-    def show_all(self):
-        self.loading.grid_forget()
-        self.start_frame.grid(row=2, column=0, sticky="nsew")
-        self.sidebar_frame.grid(row=0, column=0, rowspan=2, sticky="nsew")
-        self.settings_frame.grid(row=0, column=1, sticky="nsew")
-        self.tabview.grid(row=1, column=1, rowspan=2, padx=20, pady=(0,20), sticky="nsew")
-        self.start_button.configure(state="normal")
-    def close(self):
-        self.save_file()
-        self.destroy()
     def start(self):
         self.start_button.configure(state="disabled")
         self.save_file()
@@ -568,7 +564,10 @@ class App(customtkinter.CTk):
                 device = []
                 for monitor in EnumDisplayMonitors():
                     m_info = GetMonitorInfo(monitor[0])
-                    device.append(m_info.get('Device').split("\\")[-1])
+                    if m_info.get('Flags') == 1:
+                        device.append(m_info.get('Device').split("\\")[-1]+" (Main)")
+                    else:
+                        device.append(m_info.get('Device').split("\\")[-1])
                 if window[1][26] not in device:
                     CTkMessagebox(master=self, title="Warning Message!", message=f"Please select a valid monitor in {but[1].cget("text")}", icon="warning")
                     self.display_optionmenu.configure(values=device.copy())
@@ -580,11 +579,27 @@ class App(customtkinter.CTk):
         open_met.start()
 
 
+    def hide_all(self):
+        self.start_frame.grid_forget()
+        self.sidebar_frame.grid_forget()
+        self.settings_frame.grid_forget()
+        self.tabview.grid_forget()
+
+        self.loading.grid(row=0, column=0, rowspan=50, columnspan=50, sticky="nsew", padx=20, pady=20)
+    def show_all(self):
+        self.loading.grid_forget()
+
+        self.start_frame.grid(row=2, column=0, sticky="nsew")
+        self.sidebar_frame.grid(row=0, column=0, rowspan=2, sticky="nsew")
+        self.settings_frame.grid(row=0, column=1, sticky="nsew")
+        self.tabview.grid(row=1, column=1, rowspan=2, padx=20, pady=(0,20), sticky="nsew")
+        self.start_button.configure(state="normal")
+
     def combine_values(self, values):
         # get the working area
         work_area = []
         for item in self.minfo:
-            if item['Device'].split("\\")[-1] == values[26]:
+            if item['Device'].split("\\")[-1] == values[26].split()[0]:
                 work_area = item['Work']
                 break
         
@@ -879,6 +894,11 @@ class App(customtkinter.CTk):
                 return True
             return False
         return False
+
+    def close(self):
+        self.save_file()
+        self.destroy()
+
 
 if __name__ == "__main__":
     app = App()
