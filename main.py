@@ -14,11 +14,12 @@ from threading import Thread
 import customtkinter
 from CTkMessagebox import CTkMessagebox
 from pynput.mouse import Controller
+from re import findall
 
 # restart as admin if not admin
-if not windll.shell32.IsUserAnAdmin():
-    windll.shell32.ShellExecuteW(None, "runas", executable, " ".join(argv), None, 0x0400)
-    exit()
+# if not windll.shell32.IsUserAnAdmin():
+#     windll.shell32.ShellExecuteW(None, "runas", executable, " ".join(argv), None, 0x0400)
+#     exit()
 
 # setup paths
 directory = path.dirname(path.abspath(__file__))
@@ -50,19 +51,18 @@ class App(customtkinter.CTk):
 
         # configure window
         self.title("Stellaria Advanced Launcher")
-        window_width = 720
-        window_height = 500
         if path.exists(update_path):
             self.wm_iconbitmap(update_path)
 
-        # find window center
+        # window size and position
+        window_width = 720
+        window_height = 500
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
         scale_factor = self._get_window_scaling()
         x = int(((screen_width/2) - (window_width/2)) * scale_factor)
         y = int(((screen_height/2) - (window_height/2)) * scale_factor)
         
-        # open centered window
         self.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
         # configure grid layout (3 rows x 2 columns)
@@ -102,7 +102,6 @@ class App(customtkinter.CTk):
         self.scale_label.grid(row=0, column=1, sticky="w", padx=(10,0), pady=(20,3))
         self.scale_optionmenu = customtkinter.CTkOptionMenu(self.settings_frame, values=["40%", "60%", "80%", "100%", "120%", "140%", "160%"], width=100, command=self.set_scale)
         self.scale_optionmenu.grid(row=0, column=2, sticky="w", padx=(5,25), pady=(20,3))
-        self.scale_optionmenu.set("100%") #add to defaults later
         self.load_defaults_button = customtkinter.CTkButton(self.settings_frame, text="Paste", width=20, command=self.load_defaults)
         self.load_defaults_button.grid(row=0, column=4, padx=(0,10), sticky="e", pady=(20,3))
         self.save_defaults_button = customtkinter.CTkButton(self.settings_frame, text="Copy", width=20, command=self.save_defaults)
@@ -191,7 +190,7 @@ class App(customtkinter.CTk):
         self.bgm_label.grid(row=2, column=0, sticky="nw", padx=2, pady=2)
         self.bgm_number = customtkinter.DoubleVar()
         self.bgm_number_str = customtkinter.StringVar()
-        self.bgm_number.trace_add("write", self.on_bgm_number_change)
+        self.bgm_number.trace_add("write", self.update_bgm_number_str)
         self.bgm_slider = customtkinter.CTkSlider(self.tabview.tab("Audio"), from_=0, to=1, number_of_steps=20, command=self.set_bgm)
         self.bgm_slider.grid(row=2, column=1, sticky="ew", padx=2, pady=2)
         self.bgm_number_label = customtkinter.CTkLabel(self.tabview.tab("Audio"), textvariable=self.bgm_number_str, font=self.label_font)
@@ -239,7 +238,7 @@ class App(customtkinter.CTk):
         self.transparent_label.grid(row=8, column=0, sticky="nw", padx=2, pady=2)
         self.transparent_number = customtkinter.DoubleVar()
         self.transparent_number_str = customtkinter.StringVar()
-        self.transparent_number.trace_add("write", self.on_transparent_number_change)
+        self.transparent_number.trace_add("write", self.update_transparent_number_str)
         self.transparent_slider = customtkinter.CTkSlider(self.tabview.tab("Effects"), from_=0, to=1, number_of_steps=20, command=self.set_transparent)
         self.transparent_slider.grid(row=8, column=1, sticky="ew", padx=2, pady=2)
         self.transparent_number_label = customtkinter.CTkLabel(self.tabview.tab("Effects"), textvariable=self.transparent_number_str, font=self.label_font)
@@ -293,7 +292,7 @@ class App(customtkinter.CTk):
         self.multidmg_switch = customtkinter.CTkSwitch(self.tabview.tab("Combat"), text="Show Multi-target Damage")
         self.multidmg_switch.grid(row=8, column=0, sticky="nw", padx=2, pady=2)
 
-        # setup functional tab
+        ### FUNCTIONAL TAB ###
         self.functional_label = customtkinter.CTkLabel(self.tabview.tab("Functional"), text="Functional", font=self.title_font)
         self.functional_label.grid(row=0, column=0, sticky="nw", padx=2, pady=2)
 
@@ -301,37 +300,35 @@ class App(customtkinter.CTk):
         self.ime_switch = customtkinter.CTkSwitch(self.tabview.tab("Functional"), text="Use Stellaria IME")
         self.ime_switch.grid(row=1, column=0, sticky="nw", padx=2, pady=2,)
 
-        # Pickup
+        # pickup
         self.pickup_switch = customtkinter.CTkSwitch(self.tabview.tab("Functional"), text="Pickup Everything")
         self.pickup_switch.grid(row=2, column=0, sticky="nw", padx=2, pady=2)
 
         # prepare loading screen
         self.loading = customtkinter.CTkLabel(self, text="Starting... Please Wait", font=customtkinter.CTkFont(size=50))
 
-        # set default values
-        self.protocol("WM_DELETE_WINDOW", self.close)
+        # initialize values
         self.current_window = 1
         self.row_counter = 0
         self.buttons = []
         self.checkboxes = []
         self.delete_buttons = []
         self.edit_buttons = []
-        self.minfo = []
         self.settings = []
         self.to_start = []
+        self.minfo = []
+
+        # set default values
         self.defaults = ['0','100','0','100','60',0,0,0.000,1,1,1,1,1,1,90,1.000,5,9,1,0,1,1,1,1,1,1,self.get_monitor_values()[0]]
-        self.get_saved_values()
+        self.scale_optionmenu.set("100%")
+
+        # configure custom events
+        self.protocol("WM_DELETE_WINDOW", self.close)
         self.bind("<<BackgroundTaskFinished>>", lambda event: self.show_all())
 
-    def get_monitor_values(self):
-        device = []
-        for monitor in EnumDisplayMonitors():
-            m_info = GetMonitorInfo(monitor[0])
-            if m_info.get('Flags') == 1:
-                device.append(m_info.get('Device').split("\\")[-1]+" (Main)")
-            else:
-                device.append(m_info.get('Device').split("\\")[-1])
-        return device
+        # load values from file
+        self.get_saved_values()
+
     def get_saved_values(self):
         if path.exists(save_path):
             with open(save_path, 'r') as file:
@@ -388,40 +385,27 @@ class App(customtkinter.CTk):
             file.write(str([-1,states]) + "\n")
             file.write(str([-2,names]) + "\n")
             file.write(str([-3,self.scale_optionmenu.get(),self.update_checkbox.get()]))
-    def get_monitor_info(self):
+
+    def open_stellaria(self):
+        windll.user32.SetThreadDpiAwarenessContext(c_void_p(-1))
         minfo = []
         for monitor in EnumDisplayMonitors():
             m_info = GetMonitorInfo(monitor[0])
             minfo.append(m_info)
         self.minfo = minfo.copy()
-    def check_screens(self,value):
-        device = []
-        for monitor in EnumDisplayMonitors():
-            m_info = GetMonitorInfo(monitor[0])
-            if m_info.get('Flags') == 1:
-                device.append(m_info.get('Device').split("\\")[-1]+" (Main)")
-            else:
-                device.append(m_info.get('Device').split("\\")[-1])
-        if value not in device:
-            self.display_optionmenu.set(device[0])
-        self.display_optionmenu.configure(values=device.copy())  
-    def open_stellaria(self):
-        windll.user32.SetThreadDpiAwarenessContext(c_void_p(-1))
-        self.get_monitor_info()
 
         windows_to_start = []
         for window, start in zip(self.settings, self.to_start):
             if start == 1:
-                if self.fullscreen_switch.get() == 1:
-                    x = 1920
-                    y = 1080
+                if window[1][5] == 1:
+                    x = -8
+                    y = 0
                 else:
                     work_area = []
                     for item in self.minfo:
                         if item['Device'].split("\\")[-1] == window[1][26].split()[0]:
                             work_area = item['Work']
                             break
-                        print(work_area)
                     x = int((int(window[1][0]) / 100) * (work_area[2]-work_area[0])) -8 + work_area[0]
                     y = int((int(window[1][2]) / 100) * (work_area[3]-work_area[1])) + work_area[1]
                 windows_to_start.append([x,y,self.combine_values(window[1])])
@@ -492,37 +476,45 @@ class App(customtkinter.CTk):
                         pids.append(process.pid)
                         break
 
-        if self.fullscreen_switch.get() == 0:
-            hwnds = []
-            com = []
-            for win, pid in zip(windows_to_start,pids):
-                com.append([win[0],win[1],pid])
+        hwnds = []
+        com = []
+        for win, pid in zip(windows_to_start,pids):
+            fsc = findall(r'\d+', win[2][3])
+            com.append([win[0],win[1],pid,int(fsc[0])])
 
-            def winEnumHandler(hwnd, ctx):
-                if IsWindowVisible(hwnd):
-                    _, process_id = GetWindowThreadProcessId(hwnd)
-                    if process_id == ctx[2]:
+        def winEnumHandler(hwnd, ctx):
+            if IsWindowVisible(hwnd):
+                _, process_id = GetWindowThreadProcessId(hwnd)
+                if process_id == ctx[2]:
+                    if ctx[3] != 0:
                         rect = GetWindowRect(hwnd)
                         w = rect[2] - rect[0]
                         h = rect[3] - rect[1]
                         MoveWindow(hwnd, ctx[0], ctx[1], w, h, True)
-                        hwnds.append(hwnd)
-                        com.remove(ctx)
+                    hwnds.append(hwnd)
+                    com.remove(ctx)
 
-            while True:
-                for vals in com:
-                    EnumWindows(winEnumHandler, vals)
-                if len(pids) == len(hwnds):
-                    break
+        while True:
+            for vals in com:
+                EnumWindows(winEnumHandler, vals)
+            if len(pids) == len(hwnds):
+                break
 
         self.event_generate("<<BackgroundTaskFinished>>", when="tail")
     def start(self):
         self.start_button.configure(state="disabled")
         self.save_file()
+        self.get_selected_windows()
 
-        # check if at least 1 window exists
+        # check if at least one window exists
         if len(self.settings) == 0:
             CTkMessagebox(master=self, title="Warning Message!", message=f"Please create and select at least one window", icon="warning")
+            self.start_button.configure(state="normal")
+            return
+        
+        # check if at least one window is selected
+        if sum(self.to_start) == 0:
+            CTkMessagebox(master=self, title="Warning Message!", message=f"Please select at least one window to start", icon="warning")
             self.start_button.configure(state="normal")
             return
         
@@ -533,24 +525,7 @@ class App(customtkinter.CTk):
                 self.start_button.configure(state="normal")
                 return
         
-        # get selected windows
-        to_start = []
-        total = 0
-        for checkbox in self.checkboxes:
-            if checkbox[1].get() == 1:
-                to_start.append(1)
-                total += 1
-            else:
-                to_start.append(0)
-        
-        # check if at least one window is selected
-        if total == 0:
-            CTkMessagebox(master=self, title="Warning Message!", message=f"Please select at least one window to start", icon="warning")
-            self.start_button.configure(state="normal")
-            return
-        
-
-        self.to_start = to_start.copy()
+        # check for empty fields and valid monitor selection
         for window, start, but in zip(self.settings,self.to_start,self.buttons):
             if start == 1:
                 if window[1][0] == "" or window[1][1] == "" or window[1][2] == "" or window[1][3] == "" or window[1][4] == "":
@@ -561,23 +536,42 @@ class App(customtkinter.CTk):
                     CTkMessagebox(master=self, title="Warning Message!", message=f"Please fill out the FPS field in {but[1].cget("text")}", icon="warning")
                     self.start_button.configure(state="normal")
                     return
-                device = []
-                for monitor in EnumDisplayMonitors():
-                    m_info = GetMonitorInfo(monitor[0])
-                    if m_info.get('Flags') == 1:
-                        device.append(m_info.get('Device').split("\\")[-1]+" (Main)")
-                    else:
-                        device.append(m_info.get('Device').split("\\")[-1])
+                device = self.get_monitor_values()
                 if window[1][26] not in device:
                     CTkMessagebox(master=self, title="Warning Message!", message=f"Please select a valid monitor in {but[1].cget("text")}", icon="warning")
                     self.display_optionmenu.configure(values=device.copy())
                     self.start_button.configure(state="normal")
                     return
-
+        
+        # start opening windows
         self.hide_all()
         open_met = Thread(target=self.open_stellaria)
         open_met.start()
 
+
+
+    def get_selected_windows(self):
+        to_start = []
+        for checkbox in self.checkboxes:
+            if checkbox[1].get() == 1:
+                to_start.append(1)
+            else:
+                to_start.append(0)
+        self.to_start = to_start.copy()
+    def get_monitor_values(self):
+        device = []
+        for monitor in EnumDisplayMonitors():
+            m_info = GetMonitorInfo(monitor[0])
+            if m_info.get('Flags') == 1:
+                device.append(m_info.get('Device').split("\\")[-1]+" (Main)")
+            else:
+                device.append(m_info.get('Device').split("\\")[-1])
+        return device
+    def check_screens(self,value):
+        device = self.get_monitor_values()
+        if value not in device:
+            self.display_optionmenu.set(device[0])
+        self.display_optionmenu.configure(values=device.copy())
 
     def hide_all(self):
         self.start_frame.grid_forget()
@@ -855,25 +849,18 @@ class App(customtkinter.CTk):
         new_scaling_float = round((int(val.replace("%", "")) / 100),1)
         customtkinter.set_window_scaling(new_scaling_float)
         customtkinter.set_widget_scaling(new_scaling_float)
-
     def set_sfx(self, val):
         self.sfx_number.set(round(val))
-
     def set_bgm(self, val):
         self.bgm_number.set(round(val,3))
-    def on_bgm_number_change(self, *args):
-        self.update_bgm_number_str()
-    def update_bgm_number_str(self):
-        self.bgm_number_str.set(f"{self.bgm_number.get():.3f}")
-
     def set_fov(self, val):
         self.fov_number.set(round(val))
-
     def set_transparent(self, val):
         self.transparent_number.set(round(val,2))
-    def on_transparent_number_change(self, *args):
-        self.update_transparent_number_str()
-    def update_transparent_number_str(self):
+
+    def update_bgm_number_str(self, *args):
+        self.bgm_number_str.set(f"{self.bgm_number.get():.3f}")
+    def update_transparent_number_str(self, *args):
         self.transparent_number_str.set(f"{self.transparent_number.get():.3f}")
 
     def size_val(self, P):
@@ -898,7 +885,6 @@ class App(customtkinter.CTk):
     def close(self):
         self.save_file()
         self.destroy()
-
 
 if __name__ == "__main__":
     app = App()
