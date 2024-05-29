@@ -331,7 +331,7 @@ class App(customtkinter.CTk):
                 device.append(m_info.get('Device').split("\\")[-1]+" (Main)")
             else:
                 device.append(m_info.get('Device').split("\\")[-1])
-            return device
+        return device
     def get_saved_values(self):
         if path.exists(save_path):
             with open(save_path, 'r') as file:
