@@ -17,9 +17,9 @@ from pynput.mouse import Controller
 from re import findall
 
 # restart as admin if not admin
-# if not windll.shell32.IsUserAnAdmin():
-#     windll.shell32.ShellExecuteW(None, "runas", executable, " ".join(argv), None, 0x0400)
-#     exit()
+if not windll.shell32.IsUserAnAdmin():
+    windll.shell32.ShellExecuteW(None, "runas", executable, " ".join(argv), None, 0x0400)
+    exit()
 
 # setup paths
 directory = path.dirname(path.abspath(__file__))
@@ -36,6 +36,7 @@ if path.exists(save_path):
     for line in lines:
         values = eval(line.strip())
         if values[0] == -3:
+            print(values[1])
             scale = round((int(values[1].replace("%", "")) / 100), 1)
             customtkinter.set_widget_scaling(scale)
             customtkinter.set_window_scaling(scale)
@@ -126,51 +127,57 @@ class App(customtkinter.CTk):
         self.video_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Video", font=self.title_font)
         self.video_label.grid(row=0, column=0, sticky="nw", padx=2, pady=2)
 
+        # validation for fps field
+        fps_validation = (self.register(self.fps_val), "%P")
+
+        # fps
+        self.fps_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Max FPS (1-360)", font=self.label_font)
+        self.fps_label.grid(row=1, column=0, sticky="nw", padx=(2,32), pady=2)
+        self.fps_entry = customtkinter.CTkEntry(self.tabview.tab("Video"), validate="key", validatecommand=fps_validation)
+        self.fps_entry.grid(row=1, column=1, sticky="nw", padx=2, pady=2)
+
+        self.fullscreen_var = customtkinter.IntVar()
+
+        # fullscreen
+        self.fullscreen_switch = customtkinter.CTkSwitch(self.tabview.tab("Video"), text="Fullscreen", variable=self.fullscreen_var, onvalue=1, offvalue=0, command=self.fullscreen_event)
+        self.fullscreen_switch.grid(row=2, column=0, sticky="nw", padx=2, pady=2)
+        self.fullscreen_options = ["800x600", "1024x768", "1152x864", "1280x720", "1280x768", "1280x800", "1280x960", "1280x1024", "1366x768", "1600x900", "1600x1024", "1600x1200", "1680x1050", "1920x1080", "1920x1200", "1920x1440", "2560x1440"]
+        self.fullscreen_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Video"), values=self.fullscreen_options)
+        self.fullscreen_optionmenu.grid(row=2, column=1, sticky="nw", padx=2, pady=2)
+
         # monitor selection
         self.monitor_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Monitor", font=self.label_font)
-        self.monitor_label.grid(row=1, column=0, sticky="nw", padx=2, pady=2)
+        self.monitor_label.grid(row=3, column=0, sticky="nw", padx=2, pady=2)
         self.display_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Video"), values=self.get_monitor_values(), command=self.check_screens)
-        self.display_optionmenu.grid(row=1, column=1, sticky="nw", padx=2, pady=2)
+        self.display_optionmenu.grid(row=3, column=1, sticky="nw", padx=2, pady=2)
+        
 
         # validation for size fields
         size_validation = (self.register(self.size_val), "%P")
 
         # width_start
         self.width_start_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Width Start (0-100%)", font=self.label_font)
-        self.width_start_label.grid(row=2, column=0, sticky="nw", padx=2, pady=2)
+        self.width_start_label.grid(row=4, column=0, sticky="nw", padx=2, pady=2)
         self.width_start_entry = customtkinter.CTkEntry(self.tabview.tab("Video"), validate="key", validatecommand=size_validation)
-        self.width_start_entry.grid(row=2, column=1, sticky="nw", padx=2, pady=2)
+        self.width_start_entry.grid(row=4, column=1, sticky="nw", padx=2, pady=2)
 
         # width_end
         self.width_end_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Width End (0-100%)", font=self.label_font)
-        self.width_end_label.grid(row=3, column=0, sticky="nw", padx=2, pady=2)
+        self.width_end_label.grid(row=5, column=0, sticky="nw", padx=2, pady=2)
         self.width_end_entry = customtkinter.CTkEntry(self.tabview.tab("Video"), validate="key", validatecommand=size_validation)
-        self.width_end_entry.grid(row=3, column=1, sticky="nw", padx=2, pady=2)
+        self.width_end_entry.grid(row=5, column=1, sticky="nw", padx=2, pady=2)
 
         # height_start
         self.height_start_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Height Start (0-100%)", font=self.label_font)
-        self.height_start_label.grid(row=4, column=0, sticky="nw", padx=2, pady=2)
+        self.height_start_label.grid(row=6, column=0, sticky="nw", padx=2, pady=2)
         self.height_start_entry = customtkinter.CTkEntry(self.tabview.tab("Video"), validate="key", validatecommand=size_validation)
-        self.height_start_entry.grid(row=4, column=1, sticky="nw", padx=2, pady=2)
+        self.height_start_entry.grid(row=6, column=1, sticky="nw", padx=2, pady=2)
 
         # height_end
         self.height_end_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Height End (0-100%)", font=self.label_font)
-        self.height_end_label.grid(row=5, column=0, sticky="nw", padx=2, pady=2)
+        self.height_end_label.grid(row=7, column=0, sticky="nw", padx=2, pady=2)
         self.height_end_entry = customtkinter.CTkEntry(self.tabview.tab("Video"), validate="key", validatecommand=size_validation)
-        self.height_end_entry.grid(row=5, column=1, sticky="nw", padx=2, pady=2)
-        
-        # validation for fps field
-        fps_validation = (self.register(self.fps_val), "%P")
-
-        # fps
-        self.fps_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Max FPS (1-360)", font=self.label_font)
-        self.fps_label.grid(row=6, column=0, sticky="nw", padx=2, pady=2)
-        self.fps_entry = customtkinter.CTkEntry(self.tabview.tab("Video"), validate="key", validatecommand=fps_validation)
-        self.fps_entry.grid(row=6, column=1, sticky="nw", padx=2, pady=2)
-
-        # fullscreen
-        self.fullscreen_switch = customtkinter.CTkSwitch(self.tabview.tab("Video"), text="Fullscreen")
-        self.fullscreen_switch.grid(row=7, column=0, sticky="nw", padx=2, pady=2)
+        self.height_end_entry.grid(row=7, column=1, sticky="nw", padx=2, pady=2)
 
         ### AUDTIO TAB ###
         self.audio_label = customtkinter.CTkLabel(self.tabview.tab("Audio"), text="Audio", font=self.title_font)
@@ -319,7 +326,7 @@ class App(customtkinter.CTk):
         self.minfo = []
 
         # set default values
-        self.defaults = ['0','100','0','100','60',0,0,0.000,1,1,1,1,1,1,90,1.000,5,9,1,0,1,1,1,1,1,1,self.get_monitor_values()[0]]
+        self.defaults = ['0','100','0','100','60',0,0,0.000,1,1,1,1,1,1,90,1.000,5,9,1,0,1,1,1,1,1,1,self.get_monitor_values()[0],"800x600"]
         self.scale_optionmenu.set("100%")
 
         # configure custom events
@@ -328,7 +335,7 @@ class App(customtkinter.CTk):
 
         # load values from file
         self.get_saved_values()
-
+        
     def get_saved_values(self):
         if path.exists(save_path):
             with open(save_path, 'r') as file:
@@ -351,7 +358,7 @@ class App(customtkinter.CTk):
                 elif windows[0] == 0:
                     self.defaults = windows[1]
                     if len(inputted_values) < 5:
-                        self.hide_settings()
+                        self.settings_event()
                         self.set_values(self.defaults)
                 elif windows == inputted_values[1]:
                     self.set_values(windows[1])
@@ -360,7 +367,7 @@ class App(customtkinter.CTk):
                     self.sidebar_add_window(windows[1])
         else:
             self.set_values(self.defaults)
-            self.hide_settings()   
+            self.settings_event() 
     def save_file(self):
         for list in self.settings:
             if int(list[0]) == int(self.current_window):
@@ -550,6 +557,34 @@ class App(customtkinter.CTk):
 
 
 
+
+    def fullscreen_event(self):
+        val = self.fullscreen_var.get()
+        if val == 1:
+            self.display_optionmenu.grid_forget()
+            self.monitor_label.grid_forget()
+            self.width_start_entry.grid_forget()
+            self.width_start_label.grid_forget()
+            self.width_end_entry.grid_forget()
+            self.width_end_label.grid_forget()
+            self.height_start_entry.grid_forget()
+            self.height_start_label.grid_forget()
+            self.height_end_entry.grid_forget()
+            self.height_end_label.grid_forget()
+            self.fullscreen_optionmenu.grid(row=2, column=1, sticky="nw", padx=2, pady=2)
+        elif val == 0:
+            self.display_optionmenu.grid(row=3, column=1, sticky="nw", padx=2, pady=2)
+            self.monitor_label.grid(row=3, column=0, sticky="nw", padx=2, pady=2)
+            self.width_start_entry.grid(row=4, column=1, sticky="nw", padx=2, pady=2)
+            self.width_start_label.grid(row=4, column=0, sticky="nw", padx=2, pady=2)
+            self.width_end_entry.grid(row=5, column=1, sticky="nw", padx=2, pady=2)
+            self.width_end_label.grid(row=5, column=0, sticky="nw", padx=2, pady=2)
+            self.height_start_entry.grid(row=6, column=1, sticky="nw", padx=2, pady=2)
+            self.height_start_label.grid(row=6, column=0, sticky="nw", padx=2, pady=2)
+            self.height_end_entry.grid(row=7, column=1, sticky="nw", padx=2, pady=2)
+            self.height_end_label.grid(row=7, column=0, sticky="nw", padx=2, pady=2)
+            self.fullscreen_optionmenu.grid_forget()
+
     def get_selected_windows(self):
         to_start = []
         for checkbox in self.checkboxes:
@@ -596,10 +631,15 @@ class App(customtkinter.CTk):
             if item['Device'].split("\\")[-1] == values[26].split()[0]:
                 work_area = item['Work']
                 break
-        
+
         # calculate width and height
-        width = ceil(((abs(int(values[1])-int(values[0]))) / 100) * (work_area[2] - work_area[0]))
-        height = ceil((((abs(int(values[3])-int(values[2]))) / 100) * (work_area[3] - work_area[1])) - windll.user32.GetSystemMetrics(4) - 8)
+        if values[5] == 1:
+            res = values[27].split("x")
+            width = res[0]
+            height = res[1]
+        elif values[5] == 0:
+            width = ceil(((abs(int(values[1])-int(values[0]))) / 100) * (work_area[2] - work_area[0]))
+            height = ceil((((abs(int(values[3])-int(values[2]))) / 100) * (work_area[3] - work_area[1])) - windll.user32.GetSystemMetrics(4) - 8)
 
         # prepare settings.cfg file
         settings = ["WIDTH "+str(width),
@@ -674,6 +714,7 @@ class App(customtkinter.CTk):
         self.ime_switch.select() if values[24] == 1 else self.ime_switch.deselect()
         self.pickup_switch.select() if values[25] == 1 else self.pickup_switch.deselect()
         self.display_optionmenu.set(values[26])
+        self.fullscreen_optionmenu.set(values[27])
     def get_values(self):
         values = [self.width_start_entry.get(),
                   self.width_end_entry.get(),
@@ -701,7 +742,8 @@ class App(customtkinter.CTk):
                    self.multidmg_switch.get(),
                    self.ime_switch.get(),
                    self.pickup_switch.get(),
-                   self.display_optionmenu.get()]
+                   self.display_optionmenu.get(),
+                   self.fullscreen_optionmenu.get()]
         return values
     
     def sidebar_button_event(self, b_id):
@@ -723,6 +765,8 @@ class App(customtkinter.CTk):
         for list in self.settings:
             if int(list[0]) == int(self.current_window):
                 self.set_values(list[1])
+                self.fullscreen_var.set(list[1][5])
+                self.fullscreen_event()
                 break
     def sidebar_add_window(self, settings=[]):
         self.row_counter += 1
@@ -758,11 +802,8 @@ class App(customtkinter.CTk):
         self.edit_buttons.append([button_id,edit_name_button])
         self.sidebar_button_event(button_id)
         
-        # show settings if hidden (1 or more windows exists)
-        if not self.tabview.winfo_ismapped():
-            self.tabview.grid(row=1, column=1, rowspan=2, padx=20, pady=15, sticky="nsew")
-            self.load_defaults_button.grid(row=0, column=4, padx=(0,10), pady=(20,3), sticky="e")
-            self.save_defaults_button.grid(row=0, column=5, padx=(0,20), pady=(20,3), sticky="e")
+        # show settings if windows exists
+        self.settings_event()
     def sidebar_delete_window(self, id):
         # delete the delete button
         for delete_button in self.delete_buttons:
@@ -804,7 +845,7 @@ class App(customtkinter.CTk):
         
         # hide settings if no button
         if len(self.buttons) == 0:
-            self.hide_settings()
+            self.settings_event()
         else:
             # if active button was delete
             if id == self.current_window:
@@ -831,6 +872,15 @@ class App(customtkinter.CTk):
                     button[1].configure(text=out)
                 break
 
+    def settings_event(self):
+        if len(self.buttons) == 0:
+            self.tabview.grid_forget()
+            self.save_defaults_button.grid_forget()
+            self.load_defaults_button.grid_forget()   
+        elif len(self.buttons) >= 0:
+            self.tabview.grid(row=1, column=1, rowspan=2, padx=20, pady=15, sticky="nsew")
+            self.load_defaults_button.grid(row=0, column=4, padx=(0,10), pady=(20,3), sticky="e")
+            self.save_defaults_button.grid(row=0, column=5, padx=(0,20), pady=(20,3), sticky="e")
     def hide_settings(self):
         self.tabview.grid_forget()
         self.save_defaults_button.grid_forget()
@@ -844,6 +894,8 @@ class App(customtkinter.CTk):
         self.defaults = self.get_values()
     def load_defaults(self):
         self.set_values(self.defaults)
+        self.fullscreen_var.set(self.defaults[5])
+        self.fullscreen_event()
 
     def set_scale(self, val):
         new_scaling_float = round((int(val.replace("%", "")) / 100),1)
