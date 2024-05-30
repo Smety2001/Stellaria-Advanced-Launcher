@@ -1,7 +1,7 @@
 # import dependencies
 from os import path, kill, remove
 from sys import executable, argv, exit
-from win32api import EnumDisplayMonitors, GetMonitorInfo
+from win32api import EnumDisplayMonitors, GetMonitorInfo, MonitorFromPoint
 from win32gui import IsWindowVisible, ShowWindow, EnumWindows, GetWindowRect, MoveWindow
 from win32con import SW_HIDE
 from win32process import GetWindowThreadProcessId
@@ -17,9 +17,9 @@ from pynput.mouse import Controller
 from re import findall
 
 # restart as admin if not admin
-if not windll.shell32.IsUserAnAdmin():
-    windll.shell32.ShellExecuteW(None, "runas", executable, " ".join(argv), None, 0x0400)
-    exit()
+# if not windll.shell32.IsUserAnAdmin():
+#     windll.shell32.ShellExecuteW(None, "runas", executable, " ".join(argv), None, 0x0400)
+#     exit()
 
 # setup paths
 directory = path.dirname(path.abspath(__file__))
@@ -29,6 +29,8 @@ update_path = path.join(directory, ".Stellaria-launcher.exe")
 config_path = path.join(directory, "settings.cfg")
 crash_path = path.join(directory, "CrashSender1500.exe")
 
+main_monitor = GetMonitorInfo(MonitorFromPoint((0,0))).get("Monitor")
+
 # set to previously set scale if exists
 if path.exists(save_path):
     with open(save_path, 'r') as file:
@@ -36,7 +38,6 @@ if path.exists(save_path):
     for line in lines:
         values = eval(line.strip())
         if values[0] == -3:
-            print(values[1])
             scale = round((int(values[1].replace("%", "")) / 100), 1)
             customtkinter.set_widget_scaling(scale)
             customtkinter.set_window_scaling(scale)
@@ -141,8 +142,7 @@ class App(customtkinter.CTk):
         # fullscreen
         self.fullscreen_switch = customtkinter.CTkSwitch(self.tabview.tab("Video"), text="Fullscreen", variable=self.fullscreen_var, onvalue=1, offvalue=0, command=self.fullscreen_event)
         self.fullscreen_switch.grid(row=2, column=0, sticky="nw", padx=2, pady=2)
-        self.fullscreen_options = ["800x600", "1024x768", "1152x864", "1280x720", "1280x768", "1280x800", "1280x960", "1280x1024", "1366x768", "1600x900", "1600x1024", "1600x1200", "1680x1050", "1920x1080", "1920x1200", "1920x1440", "2560x1440"]
-        self.fullscreen_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Video"), values=self.fullscreen_options)
+        self.fullscreen_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Video"), values=self.get_fulscreen_values())
         self.fullscreen_optionmenu.grid(row=2, column=1, sticky="nw", padx=2, pady=2)
 
         # monitor selection
@@ -535,14 +535,16 @@ class App(customtkinter.CTk):
         # check for empty fields and valid monitor selection
         for window, start, but in zip(self.settings,self.to_start,self.buttons):
             if start == 1:
-                if window[1][0] == "" or window[1][1] == "" or window[1][2] == "" or window[1][3] == "" or window[1][4] == "":
-                    CTkMessagebox(master=self, title="Warning Message!", message=f"Please fill out all Video fields in {but[1].cget("text")}", icon="warning")
-                    self.start_button.configure(state="normal")
-                    return
-                elif window[1][5] == "":
-                    CTkMessagebox(master=self, title="Warning Message!", message=f"Please fill out the FPS field in {but[1].cget("text")}", icon="warning")
-                    self.start_button.configure(state="normal")
-                    return
+                if window[1][5] == 1:
+                    if window[1][4] == "":
+                        CTkMessagebox(master=self, title="Warning Message!", message=f"Please fill out the FPS field in {but[1].cget("text")}", icon="warning")
+                        self.start_button.configure(state="normal")
+                        return
+                else:
+                    if window[1][0] == "" or window[1][1] == "" or window[1][2] == "" or window[1][3] == "" or window[1][4] == "":
+                        CTkMessagebox(master=self, title="Warning Message!", message=f"Please fill out all Video fields in {but[1].cget("text")}", icon="warning")
+                        self.start_button.configure(state="normal")
+                        return
                 device = self.get_monitor_values()
                 if window[1][26] not in device:
                     CTkMessagebox(master=self, title="Warning Message!", message=f"Please select a valid monitor in {but[1].cget("text")}", icon="warning")
@@ -555,35 +557,6 @@ class App(customtkinter.CTk):
         open_met = Thread(target=self.open_stellaria)
         open_met.start()
 
-
-
-
-    def fullscreen_event(self):
-        val = self.fullscreen_var.get()
-        if val == 1:
-            self.display_optionmenu.grid_forget()
-            self.monitor_label.grid_forget()
-            self.width_start_entry.grid_forget()
-            self.width_start_label.grid_forget()
-            self.width_end_entry.grid_forget()
-            self.width_end_label.grid_forget()
-            self.height_start_entry.grid_forget()
-            self.height_start_label.grid_forget()
-            self.height_end_entry.grid_forget()
-            self.height_end_label.grid_forget()
-            self.fullscreen_optionmenu.grid(row=2, column=1, sticky="nw", padx=2, pady=2)
-        elif val == 0:
-            self.display_optionmenu.grid(row=3, column=1, sticky="nw", padx=2, pady=2)
-            self.monitor_label.grid(row=3, column=0, sticky="nw", padx=2, pady=2)
-            self.width_start_entry.grid(row=4, column=1, sticky="nw", padx=2, pady=2)
-            self.width_start_label.grid(row=4, column=0, sticky="nw", padx=2, pady=2)
-            self.width_end_entry.grid(row=5, column=1, sticky="nw", padx=2, pady=2)
-            self.width_end_label.grid(row=5, column=0, sticky="nw", padx=2, pady=2)
-            self.height_start_entry.grid(row=6, column=1, sticky="nw", padx=2, pady=2)
-            self.height_start_label.grid(row=6, column=0, sticky="nw", padx=2, pady=2)
-            self.height_end_entry.grid(row=7, column=1, sticky="nw", padx=2, pady=2)
-            self.height_end_label.grid(row=7, column=0, sticky="nw", padx=2, pady=2)
-            self.fullscreen_optionmenu.grid_forget()
 
     def get_selected_windows(self):
         to_start = []
@@ -872,6 +845,40 @@ class App(customtkinter.CTk):
                     button[1].configure(text=out)
                 break
 
+    def get_fulscreen_values(self):
+        vals = ["800x600", "1024x768", "1152x864", "1280x720", "1280x768", "1280x800", "1280x960", "1280x1024", "1366x768", "1600x900", "1600x1024", "1600x1200", "1680x1050", "1920x1080", "1920x1200", "1920x1440", "2560x1440", "3840x2160"]
+        new_vals = []
+        for val in vals:
+            if int(val.split("x")[0]) <= main_monitor[2]:
+                new_vals.append(val)
+        return new_vals
+
+    def fullscreen_event(self):
+        val = self.fullscreen_var.get()
+        if val == 1:
+            self.display_optionmenu.grid_forget()
+            self.monitor_label.grid_forget()
+            self.width_start_entry.grid_forget()
+            self.width_start_label.grid_forget()
+            self.width_end_entry.grid_forget()
+            self.width_end_label.grid_forget()
+            self.height_start_entry.grid_forget()
+            self.height_start_label.grid_forget()
+            self.height_end_entry.grid_forget()
+            self.height_end_label.grid_forget()
+            self.fullscreen_optionmenu.grid(row=2, column=1, sticky="nw", padx=2, pady=2)
+        elif val == 0:
+            self.display_optionmenu.grid(row=3, column=1, sticky="nw", padx=2, pady=2)
+            self.monitor_label.grid(row=3, column=0, sticky="nw", padx=2, pady=2)
+            self.width_start_entry.grid(row=4, column=1, sticky="nw", padx=2, pady=2)
+            self.width_start_label.grid(row=4, column=0, sticky="nw", padx=2, pady=2)
+            self.width_end_entry.grid(row=5, column=1, sticky="nw", padx=2, pady=2)
+            self.width_end_label.grid(row=5, column=0, sticky="nw", padx=2, pady=2)
+            self.height_start_entry.grid(row=6, column=1, sticky="nw", padx=2, pady=2)
+            self.height_start_label.grid(row=6, column=0, sticky="nw", padx=2, pady=2)
+            self.height_end_entry.grid(row=7, column=1, sticky="nw", padx=2, pady=2)
+            self.height_end_label.grid(row=7, column=0, sticky="nw", padx=2, pady=2)
+            self.fullscreen_optionmenu.grid_forget()
     def settings_event(self):
         if len(self.buttons) == 0:
             self.tabview.grid_forget()
@@ -880,15 +887,7 @@ class App(customtkinter.CTk):
         elif len(self.buttons) >= 0:
             self.tabview.grid(row=1, column=1, rowspan=2, padx=20, pady=15, sticky="nsew")
             self.load_defaults_button.grid(row=0, column=4, padx=(0,10), pady=(20,3), sticky="e")
-            self.save_defaults_button.grid(row=0, column=5, padx=(0,20), pady=(20,3), sticky="e")
-    def hide_settings(self):
-        self.tabview.grid_forget()
-        self.save_defaults_button.grid_forget()
-        self.load_defaults_button.grid_forget()       
-    def show_settings(self):
-        self.tabview.grid(row=1, column=1, rowspan=2, columnspan = 3, padx=20, pady=(0,20), sticky="nsew")
-        self.load_defaults_button.grid(row=0, column=2, padx=(0,10), pady=(20,0), sticky="nsew")
-        self.save_defaults_button.grid(row=0, column=3, padx=(0,20), pady=(20,0), sticky="nsew")       
+            self.save_defaults_button.grid(row=0, column=5, padx=(0,20), pady=(20,3), sticky="e")      
 
     def save_defaults(self):
         self.defaults = self.get_values()
