@@ -15,6 +15,7 @@ import customtkinter
 from CTkMessagebox import CTkMessagebox
 from pynput.mouse import Controller
 from re import findall
+print("test")
 
 # restart as admin if not admin
 if not windll.shell32.IsUserAnAdmin():
