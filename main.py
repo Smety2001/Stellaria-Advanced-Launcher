@@ -17,9 +17,9 @@ from pynput.mouse import Controller
 from re import findall
 
 # restart as admin if not admin
-# if not windll.shell32.IsUserAnAdmin():
-#     windll.shell32.ShellExecuteW(None, "runas", executable, " ".join(argv), None, 0x0400)
-#     exit()
+if not windll.shell32.IsUserAnAdmin():
+    windll.shell32.ShellExecuteW(None, "runas", executable, " ".join(argv), None, 0x0400)
+    exit()
 
 # setup paths
 directory = path.dirname(path.abspath(__file__))
@@ -151,7 +151,6 @@ class App(customtkinter.CTk):
         self.display_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Video"), values=self.get_monitor_values(), command=self.check_screens)
         self.display_optionmenu.grid(row=3, column=1, sticky="nw", padx=2, pady=2)
         
-
         # validation for size fields
         size_validation = (self.register(self.size_val), "%P")
 
