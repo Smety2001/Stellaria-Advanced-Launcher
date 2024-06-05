@@ -17,9 +17,9 @@ from pynput.mouse import Controller
 from re import findall
 
 # restart as admin if not admin
-if not windll.shell32.IsUserAnAdmin():
-    windll.shell32.ShellExecuteW(None, "runas", executable, " ".join(argv), None, 0x0400)
-    exit()
+# if not windll.shell32.IsUserAnAdmin():
+#     windll.shell32.ShellExecuteW(None, "runas", executable, " ".join(argv), None, 0x0400)
+#     exit()
 
 # setup paths
 directory = path.dirname(path.abspath(__file__))
@@ -818,19 +818,19 @@ class App(customtkinter.CTk):
         # hide settings if no button
         if len(self.buttons) == 0:
             self.settings_event()
-        else:
-            # if active button was delete
-            if id == self.current_window:
+        
+        # if active button was delete
+        elif id == self.current_window:
 
-                # select the last button
-                self.buttons[-1][1].configure(fg_color=["#325882", "#14375e"])
-                self.current_window = self.buttons[-1][0]
+            # select the last button
+            self.buttons[-1][1].configure(fg_color=["#325882", "#14375e"])
+            self.current_window = self.buttons[-1][0]
 
-                #get settings for last button
-                for list in self.settings:
-                    if int(list[0]) == int(self.current_window):
-                        self.set_values(list[1])
-                        break    
+            #get settings for last button
+            for list in self.settings:
+                if int(list[0]) == int(self.current_window):
+                    self.set_values(list[1])
+                    break    
     def rename_window(self, id):
         for button in self.buttons:
             if button[0] == id:
