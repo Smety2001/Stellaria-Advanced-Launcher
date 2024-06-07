@@ -14,7 +14,7 @@ from threading import Thread
 import customtkinter
 from CTkMessagebox import CTkMessagebox
 from pynput.mouse import Controller
-from re import findall
+from json import dump, load
 
 # restart as admin if not admin
 # if not windll.shell32.IsUserAnAdmin():
@@ -23,24 +23,20 @@ from re import findall
 
 # setup paths
 directory = path.dirname(path.abspath(__file__))
-save_path = path.join(directory, "advanced_settings.txt")
+save_path = path.join(directory, "advanced_settings.json")
 exe_path = path.join(directory, "start.exe")
 update_path = path.join(directory, ".Stellaria-launcher.exe")
 config_path = path.join(directory, "settings.cfg")
 crash_path = path.join(directory, "CrashSender1500.exe")
 
-main_monitor = GetMonitorInfo(MonitorFromPoint((0,0))).get("Monitor")
-
 # set to previously set scale if exists
 if path.exists(save_path):
-    with open(save_path, 'r') as file:
-        lines = file.readlines()
-    for line in lines:
-        values = eval(line.strip())
-        if values[0] == -3:
-            scale = round((int(values[1].replace("%", "")) / 100), 1)
-            customtkinter.set_widget_scaling(scale)
-            customtkinter.set_window_scaling(scale)
+    with open(save_path, 'r') as json_file:
+        loaded_data = load(json_file)
+        settings = loaded_data["settings"]
+        scale = round((int(settings["scale"].replace("%", "")) / 100), 1)
+        customtkinter.set_widget_scaling(scale)
+        customtkinter.set_window_scaling(scale)
 
 # set app theme
 customtkinter.set_appearance_mode("Dark")
@@ -148,7 +144,7 @@ class App(customtkinter.CTk):
         # monitor selection
         self.monitor_label = customtkinter.CTkLabel(self.tabview.tab("Video"), text="Monitor", font=self.label_font)
         self.monitor_label.grid(row=3, column=0, sticky="nw", padx=2, pady=2)
-        self.display_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Video"), values=self.get_monitor_values(), command=self.check_screens)
+        self.display_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Video"), values=self.get_monitor_values())
         self.display_optionmenu.grid(row=3, column=1, sticky="nw", padx=2, pady=2)
         
         # validation for size fields
@@ -316,466 +312,128 @@ class App(customtkinter.CTk):
         # initialize values
         self.current_window = 1
         self.row_counter = 0
-        self.buttons = []
-        self.checkboxes = []
+
         self.delete_buttons = []
         self.edit_buttons = []
+        self.buttons = []
         self.settings = []
-        self.to_start = []
-        self.minfo = []
+        self.checkboxes = []
 
         # set default values
-        self.defaults = ['0','100','0','100','60',0,0,0.000,1,1,1,1,1,1,90,1.000,5,9,1,0,1,1,1,1,1,1,self.get_monitor_values()[0],"800x600"]
-        self.scale_optionmenu.set("100%")
+        self.defaults = {"xstart": 0, "xend": 100, "ystart": 0, "yend": 100, "fps": 60, "fullscreen": 0, "sfx": 0, "bgm": 0, "effects": 1, "names": 1, "chat": 1,
+                         "glow": 1, "model": 1, "cursor": 1, "fov": 90, "transparency": 1, "shadow": 5, "skybox": 0, "petskill": 1, "dogmode": 0, "moblvl": 1,
+                         "agromob": 1, "damage": 1, "multidmg": 1, "ime": 1, "pickup": 1, "display": "Main", "fullscreenres": "800x600", "state": 0, "name": "New Window"}
 
         # configure custom events
         self.protocol("WM_DELETE_WINDOW", self.close)
         self.bind("<<BackgroundTaskFinished>>", lambda event: self.show_all())
 
         # load values from file
-        self.get_saved_values()
-        
-    def get_saved_values(self):
-        if path.exists(save_path):
-            with open(save_path, 'r') as file:
-                lines = file.readlines()
+        self.load_file()
 
-            inputted_values = []
-            for line in lines:
-                inputted_values.append(eval(line.strip()))
-
-            for windows in inputted_values:
-                if windows[0] == -3:
-                    self.scale_optionmenu.set(windows[1])
-                    self.update_checkbox.select() if windows[2] == 1 else self.update_checkbox.deselect()
-                elif windows[0] == -2:
-                    for button, name in zip(self.buttons, windows[1]):
-                        button[1].configure(text=name)
-                elif windows[0] == -1:
-                    for checkbox, state in zip(self.checkboxes, windows[1]):
-                        checkbox[1].select() if state == 1 else checkbox[1].deselect()
-                elif windows[0] == 0:
-                    self.defaults = windows[1]
-                    if len(inputted_values) < 5:
-                        self.settings_event()
-                        self.set_values(self.defaults)
-                elif windows == inputted_values[1]:
-                    self.set_values(windows[1])
-                    self.sidebar_add_window(windows[1])
-                else:
-                    self.sidebar_add_window(windows[1])
-        else:
-            self.set_values(self.defaults)
-            self.settings_event() 
-    def save_file(self):
-        for list in self.settings:
-            if int(list[0]) == int(self.current_window):
-                list[1] = self.get_values()
-                break
-
-        states = []
-        for checkbox in self.checkboxes:
-            if checkbox[1].get() == 1:
-                states.append(1)
-            else:
-                states.append(0)
-        
-        names = []
-        for button in self.buttons:
-            names.append(button[1].cget("text"))
-
-        with open(save_path, 'w') as file:
-            file.write(str([0,self.defaults]) + "\n")
-            for window in self.settings:
-                file.write(str(window) + "\n")   
-            file.write(str([-1,states]) + "\n")
-            file.write(str([-2,names]) + "\n")
-            file.write(str([-3,self.scale_optionmenu.get(),self.update_checkbox.get()]))
-
-    def open_stellaria(self):
-        windll.user32.SetThreadDpiAwarenessContext(c_void_p(-1))
-        minfo = []
-        for monitor in EnumDisplayMonitors():
-            m_info = GetMonitorInfo(monitor[0])
-            minfo.append(m_info)
-        self.minfo = minfo.copy()
-
-        windows_to_start = []
-        for window, start in zip(self.settings, self.to_start):
-            if start == 1:
-                if window[1][5] == 1:
-                    x = -8
-                    y = 0
-                else:
-                    work_area = []
-                    for item in self.minfo:
-                        if item['Device'].split("\\")[-1] == window[1][26].split()[0]:
-                            work_area = item['Work']
-                            break
-                    x = int((int(window[1][0]) / 100) * (work_area[2]-work_area[0])) -8 + work_area[0]
-                    y = int((int(window[1][2]) / 100) * (work_area[3]-work_area[1])) + work_area[1]
-                windows_to_start.append([x,y,self.combine_values(window[1])])
-
-        if self.update_checkbox.get() == 1 or not exe_path:
-            uphwnds = []
-            def updateEnumHandler(uphwnd, ctx):
-                if IsWindowVisible(uphwnd):
-                    _, process_id = GetWindowThreadProcessId(uphwnd)
-                    if process_id == ctx:
-                        ShowWindow(uphwnd, SW_HIDE)
-                        uphwnds.append(uphwnd)
-
-            process = Popen([update_path])
-            pidd = process.pid
-            p = Process(pidd)
-            while True:
-                EnumWindows(updateEnumHandler, pidd)
-                if len(uphwnds) > 0:
-                    break
-
-            while True:
-                io_counters = p.io_counters() 
-                read = io_counters[2]
-                write = io_counters[3]
-                sleep(10)
-                io_counters_new = p.io_counters() 
-                read_new = io_counters_new[2]
-                write_new = io_counters_new[3]
-                if read == read_new and write == write_new:
-                    sleep(1)
-                    kill(pidd,15)
-                    if path.exists(crash_path):
-                        remove(crash_path)
-                    break
-
-        key_lines = []
-        if path.exists(config_path): 
-            with open(config_path, 'r') as file:
-                lines = file.readlines()
-                for line in lines:
-                    if line.startswith('KEY'):
-                        key_lines.append(line.strip())
-
-        pids = []     
-        with open(config_path, 'w') as file:
-            for value in windows_to_start[0][2]:
-                file.write((value) + "\n")
-            for key in key_lines:
-                file.write((key) + "\n")
-        access_time_timestamp = path.getatime(config_path)
-        process = Popen([exe_path])
-        pids.append(process.pid)
-
-        if len(windows_to_start) > 1:
-            for window in windows_to_start[1:]:
-                while True:
-                    access_time_timestamp_new = path.getatime(config_path)
-                    if access_time_timestamp_new > access_time_timestamp:
-                        sleep(0.1)
-                        with open(config_path, 'w') as file:
-                            for value in window[2]:
-                                file.write((value) + "\n")
-                            for key in key_lines:
-                                file.write((key) + "\n")
-                        access_time_timestamp = path.getatime(config_path)
-                        process = Popen([exe_path])
-                        pids.append(process.pid)
-                        break
-
-        hwnds = []
-        com = []
-        for win, pid in zip(windows_to_start,pids):
-            fsc = findall(r'\d+', win[2][3])
-            com.append([win[0],win[1],pid,int(fsc[0])])
-
-        def winEnumHandler(hwnd, ctx):
-            if IsWindowVisible(hwnd):
-                _, process_id = GetWindowThreadProcessId(hwnd)
-                if process_id == ctx[2]:
-                    if ctx[3] != 0:
-                        rect = GetWindowRect(hwnd)
-                        w = rect[2] - rect[0]
-                        h = rect[3] - rect[1]
-                        MoveWindow(hwnd, ctx[0], ctx[1], w, h, True)
-                    hwnds.append(hwnd)
-                    com.remove(ctx)
-
-        while True:
-            for vals in com:
-                EnumWindows(winEnumHandler, vals)
-            if len(pids) == len(hwnds):
-                break
-
-        self.event_generate("<<BackgroundTaskFinished>>", when="tail")
-    def start(self):
-        self.start_button.configure(state="disabled")
-        self.save_file()
-        self.get_selected_windows()
-
-        # check if at least one window exists
-        if len(self.settings) == 0:
-            CTkMessagebox(master=self, title="Warning Message!", message=f"Please create and select at least one window", icon="warning")
-            self.start_button.configure(state="normal")
-            return
-        
-        # check if at least one window is selected
-        if sum(self.to_start) == 0:
-            CTkMessagebox(master=self, title="Warning Message!", message=f"Please select at least one window to start", icon="warning")
-            self.start_button.configure(state="normal")
-            return
-        
-        # check if patcher exists
-        if self.update_checkbox.get() == 1:
-            if not path.exists(update_path):
-                CTkMessagebox(master=self, title="Warning Message!", message=f"Cannot find .Stellaria-launcher.exe, please rename your launcher", icon="warning")
-                self.start_button.configure(state="normal")
-                return
-        
-        # check for empty fields and valid monitor selection
-        for window, start, but in zip(self.settings,self.to_start,self.buttons):
-            if start == 1:
-                if window[1][5] == 1:
-                    if window[1][4] == "":
-                        CTkMessagebox(master=self, title="Warning Message!", message=f"Please fill out the FPS field in {but[1].cget("text")}", icon="warning")
-                        self.start_button.configure(state="normal")
-                        return
-                else:
-                    if window[1][0] == "" or window[1][1] == "" or window[1][2] == "" or window[1][3] == "" or window[1][4] == "":
-                        CTkMessagebox(master=self, title="Warning Message!", message=f"Please fill out all Video fields in {but[1].cget("text")}", icon="warning")
-                        self.start_button.configure(state="normal")
-                        return
-                device = self.get_monitor_values()
-                if window[1][26] not in device:
-                    CTkMessagebox(master=self, title="Warning Message!", message=f"Please select a valid monitor in {but[1].cget("text")}", icon="warning")
-                    self.display_optionmenu.configure(values=device.copy())
-                    self.start_button.configure(state="normal")
-                    return
-        
-        # start opening windows
-        self.hide_all()
-        open_met = Thread(target=self.open_stellaria)
-        open_met.start()
-
-
-    def get_selected_windows(self):
-        to_start = []
-        for checkbox in self.checkboxes:
-            if checkbox[1].get() == 1:
-                to_start.append(1)
-            else:
-                to_start.append(0)
-        self.to_start = to_start.copy()
+    # get values for optionmenus
     def get_monitor_values(self):
         device = []
         for monitor in EnumDisplayMonitors():
             m_info = GetMonitorInfo(monitor[0])
             if m_info.get('Flags') == 1:
-                device.append(m_info.get('Device').split("\\")[-1]+" (Main)")
+                device.append("Main")
             else:
                 device.append(m_info.get('Device').split("\\")[-1])
         return device
-    def check_screens(self,value):
-        device = self.get_monitor_values()
-        if value not in device:
-            self.display_optionmenu.set(device[0])
-        self.display_optionmenu.configure(values=device.copy())
+    def get_fulscreen_values(self):
+        all_res = ["800x600", "1024x768", "1152x864", "1280x720", "1280x768", "1280x800", "1280x960", "1280x1024", "1366x768", "1600x900", "1600x1024", "1600x1200", "1680x1050", "1920x1080", "1920x1200", "1920x1440", "2560x1440", "3840x2160"]
+        possible_res = []
+        for res in all_res:
+            if int(res.split("x")[0]) <= self.winfo_screenwidth():
+                possible_res.append(res)
+        return possible_res
 
-    def hide_all(self):
-        self.start_frame.grid_forget()
-        self.sidebar_frame.grid_forget()
-        self.settings_frame.grid_forget()
-        self.tabview.grid_forget()
+    # set values for optionmenus
+    def set_scale(self, val):
+        new_scaling_float = round((int(val.replace("%", "")) / 100),1)
+        customtkinter.set_window_scaling(new_scaling_float)
+        customtkinter.set_widget_scaling(new_scaling_float)
 
-        self.loading.grid(row=0, column=0, rowspan=50, columnspan=50, sticky="nsew", padx=20, pady=20)
-    def show_all(self):
-        self.loading.grid_forget()
+    # get / set defaults
+    def save_defaults(self):
+        self.defaults = self.get_values()
+    def load_defaults(self):
+        self.set_values(self.defaults)
+        self.fullscreen_var.set(self.defaults["fullscreen"])
+        self.fullscreen_event()
 
-        self.start_frame.grid(row=2, column=0, sticky="nsew")
-        self.sidebar_frame.grid(row=0, column=0, rowspan=2, sticky="nsew")
-        self.settings_frame.grid(row=0, column=1, sticky="nsew")
-        self.tabview.grid(row=1, column=1, rowspan=2, padx=20, pady=(0,20), sticky="nsew")
-        self.start_button.configure(state="normal")
-
-    def combine_values(self, values):
-        # get the working area
-        work_area = []
-        for item in self.minfo:
-            if item['Device'].split("\\")[-1] == values[26].split()[0]:
-                work_area = item['Work']
-                break
-
-        # calculate width and height
-        if values[5] == 1:
-            res = values[27].split("x")
-            width = res[0]
-            height = res[1]
-        elif values[5] == 0:
-            width = ceil(((abs(int(values[1])-int(values[0]))) / 100) * (work_area[2] - work_area[0]))
-            height = ceil((((abs(int(values[3])-int(values[2]))) / 100) * (work_area[3] - work_area[1])) - windll.user32.GetSystemMetrics(4) - 8)
-
-        # prepare settings.cfg file
-        settings = ["WIDTH "+str(width),
-                  "HEIGHT "+str(height),
-                  "MAX_FPS "+str(values[4]),
-                  "WINDOWED "+str(1 if values[5] == 0 else 0),
-                  "VOICE_VOLUME "+str(values[6]),
-                  "MUSIC_VOLUME "+f"{values[7]:.3f}",
-                  "SPECIAL_EFFECT_MODE_OTHER "+str(values[8]),
-                  "ALWAYS_VIEW_NAME "+str(values[9]),
-                  "VIEW_CHAT "+str(values[10]),
-                  "SPECIAL_EFFECT_MODE_ITEM "+str(values[11]),
-                  "TARGET_RENDER "+str(values[12]),
-                  "SOFTWARE_CURSOR "+str(1 if values[13] == 0 else 0),
-                  "FIELD_OF_VIEW "+str(values[14]),
-                  "TRANSPARENT "+f"{values[15]:.3f}",
-                  "SHADOW_LEVEL "+str(values[16]),
-                  "SKYBOX_MODE "+str(values[17]),
-                  "PET_SKILL_USE_INFO "+str(values[18]),
-                  "DOG_MODE "+str(values[19]),
-                  "SHOW_MOBLEVEL "+str(values[20]),
-                  "SHOW_MOBAIFLAG "+str(values[21]),
-                  "SHOW_DAMAGE "+str(values[22]),
-                  "SHOW_MULTIPLE_DAMAGE "+str(values[23]),
-                  "USE_DEFAULT_IME "+str(1 if values[24] == 0 else 0),
-                  "PICKUP_ALL_ONCE "+str(values[25]),
-                  "VISIBILITY 3",
-                  "BPP 32",
-                  "GAMMA 3",
-                  "OBJECT_CULLING 1",
-                  "PRELOAD_MOTION 1 ",
-                  "DECOMPRESSED_TEXTURE 0 ",
-                  "SOFTWARE_TILING 0",
-                  "IS_SAVE_ID 0",
-                  "SAVE_ID 0",
-                  "FREQUENCY "+str(values[4])]
-        return settings   
+    # get / set values
     def set_values(self, values):
         self.width_start_entry.delete(0, customtkinter.END)
-        self.width_start_entry.insert(0, values[0])
+        self.width_start_entry.insert(0, str(values["xstart"]))
         self.width_end_entry.delete(0, customtkinter.END)
-        self.width_end_entry.insert(0, values[1])
+        self.width_end_entry.insert(0, str(values["xend"]))
         self.height_start_entry.delete(0, customtkinter.END)
-        self.height_start_entry.insert(0, values[2])
+        self.height_start_entry.insert(0, str(values["ystart"]))
         self.height_end_entry.delete(0, customtkinter.END)
-        self.height_end_entry.insert(0, values[3])
+        self.height_end_entry.insert(0, str(values["yend"]))
         self.fps_entry.delete(0, customtkinter.END)
-        self.fps_entry.insert(0, values[4])
-        self.fullscreen_switch.select() if values[5] == 1 else self.fullscreen_switch.deselect()
-        self.sfx_slider.set(values[6])
-        self.sfx_number.set(values[6])
-        self.bgm_slider.set(values[7])
-        self.bgm_number.set(values[7])
-        self.effects_switch.select() if values[8] == 1 else self.effects_switch.deselect()
-        self.names_switch.select() if values[9] == 1 else self.names_switch.deselect()
-        self.chat_switch.select() if values[10] == 1 else self.chat_switch.deselect()
-        self.glow_switch.select() if values[11] == 1 else self.glow_switch.deselect()  
-        self.model_switch.select() if values[12] == 1 else self.model_switch.deselect()  
-        self.cursor_switch.select() if values[13] == 1 else self.cursor_switch.deselect() 
-        self.fov_slider.set(values[14])
-        self.fov_number.set(values[14])
-        self.transparent_slider.set(values[15])
-        self.transparent_number.set(values[15])
-        self.shadow_optionmenu.set(self.shadow_options[values[16]])
-        self.skybox_optionmenu.set(self.skybox_options[values[17]])
-        self.petskill_switch.select() if values[18] == 1 else self.petskill_switch.deselect()
-        self.dogmode_switch.select() if values[19] == 1 else self.dogmode_switch.deselect()
-        self.moblvl_switch.select() if values[20] == 1 else self.moblvl_switch.deselect()
-        self.agromob_switch.select() if values[21] == 1 else self.agromob_switch.deselect()
-        self.damage_switch.select() if values[22] == 1 else self.damage_switch.deselect()       
-        self.multidmg_switch.select() if values[23] == 1 else self.multidmg_switch.deselect()
-        self.ime_switch.select() if values[24] == 1 else self.ime_switch.deselect()
-        self.pickup_switch.select() if values[25] == 1 else self.pickup_switch.deselect()
-        self.display_optionmenu.set(values[26])
-        self.fullscreen_optionmenu.set(values[27])
+        self.fps_entry.insert(0, str(values["fps"]))
+        self.fullscreen_switch.select() if values["fullscreen"] == 1 else self.fullscreen_switch.deselect()
+        self.sfx_slider.set(values["sfx"])
+        self.sfx_number.set(values["sfx"])
+        self.bgm_slider.set(values["bgm"])
+        self.bgm_number.set(values["bgm"])
+        self.effects_switch.select() if values["effects"] == 1 else self.effects_switch.deselect()
+        self.names_switch.select() if values["names"] == 1 else self.names_switch.deselect()
+        self.chat_switch.select() if values["chat"] == 1 else self.chat_switch.deselect()
+        self.glow_switch.select() if values["glow"] == 1 else self.glow_switch.deselect()  
+        self.model_switch.select() if values["model"] == 1 else self.model_switch.deselect()  
+        self.cursor_switch.select() if values["cursor"] == 1 else self.cursor_switch.deselect() 
+        self.fov_slider.set(values["fov"])
+        self.fov_number.set(values["fov"])
+        self.transparent_slider.set(values["transparency"])
+        self.transparent_number.set(values["transparency"])
+        self.shadow_optionmenu.set(self.shadow_options[values["shadow"]])
+        self.skybox_optionmenu.set(self.skybox_options[values["skybox"]])
+        self.petskill_switch.select() if values["petskill"] == 1 else self.petskill_switch.deselect()
+        self.dogmode_switch.select() if values["dogmode"] == 1 else self.dogmode_switch.deselect()
+        self.moblvl_switch.select() if values["moblvl"] == 1 else self.moblvl_switch.deselect()
+        self.agromob_switch.select() if values["agromob"] == 1 else self.agromob_switch.deselect()
+        self.damage_switch.select() if values["damage"] == 1 else self.damage_switch.deselect()       
+        self.multidmg_switch.select() if values["multidmg"] == 1 else self.multidmg_switch.deselect()
+        self.ime_switch.select() if values["ime"] == 1 else self.ime_switch.deselect()
+        self.pickup_switch.select() if values["pickup"] == 1 else self.pickup_switch.deselect()
+        self.display_optionmenu.set(values["display"])
+        self.fullscreen_optionmenu.set(values["fullscreenres"])
     def get_values(self):
-        values = [self.width_start_entry.get(),
-                  self.width_end_entry.get(),
-                   self.height_start_entry.get(),
-                   self.height_end_entry.get(),
-                   self.fps_entry.get(),
-                   self.fullscreen_switch.get(),
-                   self.sfx_number.get(),
-                   self.bgm_number.get(),
-                   self.effects_switch.get(),
-                   self.names_switch.get(),
-                   self.chat_switch.get(),
-                   self.glow_switch.get(),
-                   self.model_switch.get(),
-                   self.cursor_switch.get(),
-                   self.fov_number.get(),
-                   self.transparent_number.get(),
-                   self.shadow_options.index(self.shadow_optionmenu.get()),
-                   self.skybox_options.index(self.skybox_optionmenu.get()),
-                   self.petskill_switch.get(),
-                   self.dogmode_switch.get(),
-                   self.moblvl_switch.get(),
-                   self.agromob_switch.get(),
-                   self.damage_switch.get(),
-                   self.multidmg_switch.get(),
-                   self.ime_switch.get(),
-                   self.pickup_switch.get(),
-                   self.display_optionmenu.get(),
-                   self.fullscreen_optionmenu.get()]
+        values = {"xstart": int(self.width_start_entry.get()),
+                  "xend": int(self.width_end_entry.get()),
+                  "ystart": int(self.height_start_entry.get()),
+                  "yend": int(self.height_end_entry.get()),
+                  "fps": int(self.fps_entry.get()),
+                  "fullscreen": self.fullscreen_switch.get(),
+                  "sfx": self.sfx_number.get(),
+                  "bgm": self.bgm_number.get(),
+                  "effects": self.effects_switch.get(),
+                  "names": self.names_switch.get(),
+                  "chat": self.chat_switch.get(),
+                  "glow": self.glow_switch.get(),
+                  "model": self.model_switch.get(),
+                  "cursor": self.cursor_switch.get(),
+                  "fov": self.fov_number.get(),
+                  "transparency": self.transparent_number.get(),
+                  "shadow": self.shadow_options.index(self.shadow_optionmenu.get()),
+                  "skybox": self.skybox_options.index(self.skybox_optionmenu.get()),
+                  "petskill": self.petskill_switch.get(),
+                  "dogmode": self.dogmode_switch.get(),
+                  "moblvl": self.moblvl_switch.get(),
+                  "agromob": self.agromob_switch.get(),
+                  "damage": self.damage_switch.get(),
+                  "multidmg": self.multidmg_switch.get(),
+                  "ime": self.ime_switch.get(),
+                  "pickup": self.pickup_switch.get(),
+                  "display": self.display_optionmenu.get(),
+                  "fullscreenres": self.fullscreen_optionmenu.get()}
         return values
-    
-    def sidebar_button_event(self, b_id):
-        # save values of previous window
-        for list in self.settings:
-            if int(list[0]) == int(self.current_window):
-                list[1] = self.get_values()
-                break
 
-        # set the pressed window to current
-        for button in self.buttons:
-            if button[0] == b_id:
-                button[1].configure(fg_color=["#325882", "#14375e"])
-                self.current_window = button[0]
-            else:
-                button[1].configure(fg_color=["#3B8ED0", "#1F6AA5"])
-                
-        # show values for current window
-        for list in self.settings:
-            if int(list[0]) == int(self.current_window):
-                self.set_values(list[1])
-                self.fullscreen_var.set(list[1][5])
-                self.fullscreen_event()
-                break
-    def sidebar_add_window(self, settings=[]):
-        self.row_counter += 1
-        button_id = self.row_counter
-
-        # add delete button
-        delete_button = customtkinter.CTkButton(self.sidebar_frame, text="X", fg_color="red", width=28, hover_color="#8B0000", font=customtkinter.CTkFont(size=15, weight="bold"), command=lambda b_id=button_id: self.sidebar_delete_window(b_id))
-        delete_button.grid(row=self.row_counter, column=0, padx=5, pady=5, sticky="nws")
-
-        # add edit button
-        edit_name_button = customtkinter.CTkButton(self.sidebar_frame, text="E", fg_color="#ff7900", width=28, hover_color="#b35500", font=customtkinter.CTkFont(size=15, weight="bold"), command=lambda b_id=button_id: self.rename_window(b_id))
-        edit_name_button.grid(row=self.row_counter, column=1, padx=(0,5), pady=5, sticky="nws")
-
-        # add window button
-        sidebar_button = customtkinter.CTkButton(self.sidebar_frame, text=(f'Window{button_id}'), command=lambda b_id=button_id: self.sidebar_button_event(b_id))
-        sidebar_button.grid(row=self.row_counter, column=2, padx=(0,5), pady=5,sticky="nsew")
-
-        # add checkbox
-        checkbox = customtkinter.CTkCheckBox(self.sidebar_frame, text="", hover_color="green",fg_color="green", width=24)
-        checkbox.grid(row=self.row_counter, column=3, pady=5, sticky="nws")
-
-        # move add button down
-        self.sidebar_button_add.grid(row=self.row_counter+1, column=0, columnspan=4, sticky="nsew", padx=10, pady=10)
-
-        # save widgets
-        if settings == []:
-            self.settings.append([button_id,self.defaults])
-        else:
-            self.settings.append([button_id,settings])   
-        self.delete_buttons.append([button_id,delete_button])
-        self.buttons.append([button_id,sidebar_button])
-        self.checkboxes.append([button_id,checkbox])
-        self.edit_buttons.append([button_id,edit_name_button])
-        self.sidebar_button_event(button_id)
-        
-        # show settings if windows exists
-        self.settings_event()
+    # side panel events
     def sidebar_delete_window(self, id):
         # delete the delete button
         for delete_button in self.delete_buttons:
@@ -826,13 +484,13 @@ class App(customtkinter.CTk):
             self.buttons[-1][1].configure(fg_color=["#325882", "#14375e"])
             self.current_window = self.buttons[-1][0]
 
-            #get settings for last button
+            # get settings for last button
             for list in self.settings:
-                if int(list[0]) == int(self.current_window):
+                if list[0] == self.current_window:
                     self.set_values(list[1])
                     break    
     def rename_window(self, id):
-        for button in self.buttons:
+        for button, window in zip(self.buttons,self.settings):
             if button[0] == id:
                 previous_name = button[1].cget("text")
                 dialog = customtkinter.CTkInputDialog(text="Type in a new name:", title=f"Rename {previous_name}",)
@@ -842,16 +500,79 @@ class App(customtkinter.CTk):
                 out = dialog.get_input()
                 if out != None:
                     button[1].configure(text=out)
+                    window[1]["name"] = out
+                break
+    def sidebar_button_event(self, b_id):
+        # save values of previous window
+        for list in self.settings:
+            if list[0] == self.current_window:
+                list[1].update(self.get_values())
                 break
 
-    def get_fulscreen_values(self):
-        vals = ["800x600", "1024x768", "1152x864", "1280x720", "1280x768", "1280x800", "1280x960", "1280x1024", "1366x768", "1600x900", "1600x1024", "1600x1200", "1680x1050", "1920x1080", "1920x1200", "1920x1440", "2560x1440", "3840x2160"]
-        new_vals = []
-        for val in vals:
-            if int(val.split("x")[0]) <= main_monitor[2]:
-                new_vals.append(val)
-        return new_vals
+        # set the pressed window to current
+        for button in self.buttons:
+            if button[0] == b_id:
+                button[1].configure(fg_color=["#325882", "#14375e"])
+                self.current_window = button[0]
+            else:
+                button[1].configure(fg_color=["#3B8ED0", "#1F6AA5"])
+                
+        # show values for current window
+        for list in self.settings:
+            if list[0] == self.current_window:
+                self.set_values(list[1])
+                self.fullscreen_var.set(list[1]["fullscreen"])
+                self.fullscreen_event()
+                break
+    def checkbox_event(self, id):
+        for checkbox, setting in zip(self.checkboxes,self.settings):
+            if setting[0] == id:
+                setting[1]["state"] = checkbox[1].get()
+                break
+    def sidebar_add_window(self, settings={}):
+        self.row_counter += 1
+        button_id = self.row_counter
 
+        # add delete button
+        delete_button = customtkinter.CTkButton(self.sidebar_frame, text="X", fg_color="red", width=28, hover_color="#8B0000", font=customtkinter.CTkFont(size=15, weight="bold"), command=lambda b_id=button_id: self.sidebar_delete_window(b_id))
+        delete_button.grid(row=self.row_counter, column=0, padx=5, pady=5, sticky="nws")
+
+        # add edit button
+        edit_name_button = customtkinter.CTkButton(self.sidebar_frame, text="E", fg_color="#ff7900", width=28, hover_color="#b35500", font=customtkinter.CTkFont(size=15, weight="bold"), command=lambda b_id=button_id: self.rename_window(b_id))
+        edit_name_button.grid(row=self.row_counter, column=1, padx=(0,5), pady=5, sticky="nws")
+
+        # add window button
+        sidebar_button = customtkinter.CTkButton(self.sidebar_frame, text="New Window", command=lambda b_id=button_id: self.sidebar_button_event(b_id))
+        sidebar_button.grid(row=self.row_counter, column=2, padx=(0,5), pady=5,sticky="nsew")
+
+        # add checkbox
+        checkbox = customtkinter.CTkCheckBox(self.sidebar_frame, text="", hover_color="green",fg_color="green", width=24, command=lambda b_id=button_id: self.checkbox_event(b_id))
+        checkbox.grid(row=self.row_counter, column=3, pady=5, sticky="nws")
+
+        # move add button down
+        self.sidebar_button_add.grid(row=self.row_counter+1, column=0, columnspan=4, sticky="nsew", padx=10, pady=10)
+
+        # save widgets
+        if settings == {}:
+            self.settings.append([button_id,self.defaults.copy()])
+            self.buttons.append([button_id,sidebar_button])
+            self.checkboxes.append([button_id,checkbox])
+        else:
+            sidebar_button.configure(text=settings["name"])
+            checkbox.select() if settings["state"] == 1 else checkbox.deselect()
+
+            self.settings.append([button_id,settings.copy()])
+            self.buttons.append([button_id,sidebar_button])
+            self.checkboxes.append([button_id,checkbox])
+
+        self.edit_buttons.append([button_id,edit_name_button])
+        self.delete_buttons.append([button_id,delete_button])
+        self.sidebar_button_event(button_id)
+        
+        # show settings if windows exists
+        self.settings_event()
+
+    # hide / show UI
     def fullscreen_event(self):
         val = self.fullscreen_var.get()
         if val == 1:
@@ -886,19 +607,24 @@ class App(customtkinter.CTk):
         elif len(self.buttons) >= 0:
             self.tabview.grid(row=1, column=1, rowspan=2, padx=20, pady=15, sticky="nsew")
             self.load_defaults_button.grid(row=0, column=4, padx=(0,10), pady=(20,3), sticky="e")
-            self.save_defaults_button.grid(row=0, column=5, padx=(0,20), pady=(20,3), sticky="e")      
+            self.save_defaults_button.grid(row=0, column=5, padx=(0,20), pady=(20,3), sticky="e")
+    def hide_all(self):
+        self.start_frame.grid_forget()
+        self.sidebar_frame.grid_forget()
+        self.settings_frame.grid_forget()
+        self.tabview.grid_forget()
 
-    def save_defaults(self):
-        self.defaults = self.get_values()
-    def load_defaults(self):
-        self.set_values(self.defaults)
-        self.fullscreen_var.set(self.defaults[5])
-        self.fullscreen_event()
+        self.loading.grid(row=0, column=0, rowspan=50, columnspan=50, sticky="nsew", padx=20, pady=20)
+    def show_all(self):
+        self.loading.grid_forget()
 
-    def set_scale(self, val):
-        new_scaling_float = round((int(val.replace("%", "")) / 100),1)
-        customtkinter.set_window_scaling(new_scaling_float)
-        customtkinter.set_widget_scaling(new_scaling_float)
+        self.start_frame.grid(row=2, column=0, sticky="nsew")
+        self.sidebar_frame.grid(row=0, column=0, rowspan=2, sticky="nsew")
+        self.settings_frame.grid(row=0, column=1, sticky="nsew")
+        self.tabview.grid(row=1, column=1, rowspan=2, padx=20, pady=(0,20), sticky="nsew")
+        self.start_button.configure(state="normal")
+
+    # update labels with sliders
     def set_sfx(self, val):
         self.sfx_number.set(round(val))
     def set_bgm(self, val):
@@ -907,12 +633,12 @@ class App(customtkinter.CTk):
         self.fov_number.set(round(val))
     def set_transparent(self, val):
         self.transparent_number.set(round(val,2))
-
     def update_bgm_number_str(self, *args):
         self.bgm_number_str.set(f"{self.bgm_number.get():.3f}")
     def update_transparent_number_str(self, *args):
         self.transparent_number_str.set(f"{self.transparent_number.get():.3f}")
 
+    # validation for entry fields
     def size_val(self, P):
         if P == "":
             return True
@@ -932,6 +658,288 @@ class App(customtkinter.CTk):
             return False
         return False
 
+    # start button event
+    def start(self):
+        self.start_button.configure(state="disabled")
+        self.save_file()
+
+        # check if at least one window exists
+        if len(self.settings) == 0:
+            CTkMessagebox(master=self, title="Warning Message!", message=f"Please create and select at least one window", icon="warning")
+            self.start_button.configure(state="normal")
+            return
+        
+        # check if at least one window is selected
+        count = 0
+        for d in self.settings:
+            if d[1]["state"] == 1:
+                count += 1
+                break
+
+        if count == 0:
+            CTkMessagebox(master=self, title="Warning Message!", message=f"Please select at least one window to start", icon="warning")
+            self.start_button.configure(state="normal")
+            return
+        
+        # check if patcher exists
+        if self.update_checkbox.get() == 1:
+            if not path.exists(update_path):
+                CTkMessagebox(master=self, title="Warning Message!", message=f"Cannot find .Stellaria-launcher.exe, please rename your launcher", icon="warning")
+                self.start_button.configure(state="normal")
+                return
+        
+        # check values
+        for window, but in zip(self.settings,self.buttons):
+            if window[1]["state"] == 1:
+                if window[1]["fullscreen"] == 1:
+                    if window[1]["fps"] == "":
+                        CTkMessagebox(master=self, title="Warning Message!", message=f"Please fill out the FPS field in {but[1].cget("text")}", icon="warning")
+                        self.start_button.configure(state="normal")
+                        return
+                    possible_res = self.get_fulscreen_values()
+                    if window[1]["fullscreenres"] not in possible_res:
+                        CTkMessagebox(master=self, title="Warning Message!", message=f"Please select a valid resolution in {but[1].cget("text")}", icon="warning")
+                        self.fullscreen_optionmenu.configure(values=possible_res.copy())
+                        self.start_button.configure(state="normal")
+                else:
+                    if window[1]["xstart"] == "" or window[1]["xend"] == "" or window[1]["ystart"] == "" or window[1]["yend"] == "" or window[1]["fps"] == "":
+                        CTkMessagebox(master=self, title="Warning Message!", message=f"Please fill out all Video fields in {but[1].cget("text")}", icon="warning")
+                        self.start_button.configure(state="normal")
+                        return
+                    device = self.get_monitor_values()
+                    if window[1]["display"] not in device:
+                        CTkMessagebox(master=self, title="Warning Message!", message=f"Please select a valid monitor in {but[1].cget("text")}", icon="warning")
+                        self.display_optionmenu.configure(values=device.copy())
+                        self.start_button.configure(state="normal")
+                        return
+
+        def open_stellaria():
+            windll.user32.SetThreadDpiAwarenessContext(c_void_p(-1))
+
+            minfo = []
+            for monitor in EnumDisplayMonitors():
+                minfo.append(GetMonitorInfo(monitor[0]))
+
+            def combine_values(values):
+                # get the working area
+                work_area = []
+                for item in minfo:
+                    if item['Device'].split("\\")[-1] == values["display"] or (item['Flags'] == 1 and values["display"] == "Main"):
+                        work_area = item['Work']
+                        break
+
+                # calculate width and height
+                if values["fullscreen"] == 1:
+                    res = values["fullscreenres"].split("x")
+                    width = res[0]
+                    height = res[1]
+                elif values["fullscreen"] == 0:
+                    width = ceil(((abs(int(values["xend"])-int(values["xstart"]))) / 100) * (work_area[2] - work_area[0]))
+                    height = ceil((((abs(int(values["yend"])-int(values["ystart"]))) / 100) * (work_area[3] - work_area[1])) - windll.user32.GetSystemMetrics(4) - 8)
+
+                # prepare settings.cfg file
+                settings = ["WIDTH "+str(width),
+                        "HEIGHT "+str(height),
+                        "MAX_FPS "+str(values["fps"]),
+                        "WINDOWED "+str(1 if values["fullscreen"] == 0 else 0),
+                        "VOICE_VOLUME "+str(values["sfx"]),
+                        "MUSIC_VOLUME "+f"{values["bgm"]:.3f}",
+                        "SPECIAL_EFFECT_MODE_OTHER "+str(values["effects"]),
+                        "ALWAYS_VIEW_NAME "+str(values["names"]),
+                        "VIEW_CHAT "+str(values["chat"]),
+                        "SPECIAL_EFFECT_MODE_ITEM "+str(values["glow"]),
+                        "TARGET_RENDER "+str(values["model"]),
+                        "SOFTWARE_CURSOR "+str(1 if values["cursor"] == 0 else 0),
+                        "FIELD_OF_VIEW "+str(values["fov"]),
+                        "TRANSPARENT "+f"{values["transparency"]:.3f}",
+                        "SHADOW_LEVEL "+str(values["shadow"]),
+                        "SKYBOX_MODE "+str(values["skybox"]),
+                        "PET_SKILL_USE_INFO "+str(values["petskill"]),
+                        "DOG_MODE "+str(values["dogmode"]),
+                        "SHOW_MOBLEVEL "+str(values["moblvl"]),
+                        "SHOW_MOBAIFLAG "+str(values["agromob"]),
+                        "SHOW_DAMAGE "+str(values["damage"]),
+                        "SHOW_MULTIPLE_DAMAGE "+str(values["multidmg"]),
+                        "USE_DEFAULT_IME "+str(1 if values["ime"] == 0 else 0),
+                        "PICKUP_ALL_ONCE "+str(values["pickup"]),
+                        "VISIBILITY 3",
+                        "BPP 32",
+                        "GAMMA 3",
+                        "OBJECT_CULLING 1",
+                        "PRELOAD_MOTION 1 ",
+                        "DECOMPRESSED_TEXTURE 0 ",
+                        "SOFTWARE_TILING 0",
+                        "IS_SAVE_ID 0",
+                        "SAVE_ID 0",
+                        "FREQUENCY "+str(values["fps"])]
+                return settings
+
+            windows_to_start = []
+            for window in self.settings:
+                if window[1]["state"] == 1:
+                        if window[1]["fullscreen"] == 0:
+                            for item in minfo:
+                                if item['Device'].split("\\")[-1] == window[1]["display"] or (item['Flags'] == 1 and window[1]["display"] == "Main"):
+                                    work_area = item['Work']
+                                    break
+                            x = int((int(window[1]["xstart"]) / 100) * (work_area[2]-work_area[0])) -8 + work_area[0]
+                            y = int((int(window[1]["ystart"]) / 100) * (work_area[3]-work_area[1])) + work_area[1]
+                        elif window[1]["fullscreen"] == 1:
+                            x = 0
+                            y = 0
+                        windows_to_start.append({"x":x,"y":y,"config":combine_values(window[1]),"fullscreen":0})
+
+            if self.update_checkbox.get() == 1:
+                uphwnds = []
+                def updateEnumHandler(uphwnd, ctx):
+                    if IsWindowVisible(uphwnd):
+                        _, process_id = GetWindowThreadProcessId(uphwnd)
+                        if process_id == ctx:
+                            ShowWindow(uphwnd, SW_HIDE)
+                            uphwnds.append(uphwnd)
+
+                process = Popen([update_path])
+                pidd = process.pid
+                p = Process(pidd)
+                while True:
+                    EnumWindows(updateEnumHandler, pidd)
+                    if len(uphwnds) > 0:
+                        break
+
+                while True:
+                    io_counters = p.io_counters() 
+                    read = io_counters[2]
+                    write = io_counters[3]
+                    sleep(10)
+                    io_counters_new = p.io_counters() 
+                    read_new = io_counters_new[2]
+                    write_new = io_counters_new[3]
+                    if read == read_new and write == write_new:
+                        sleep(0.5)
+                        kill(pidd,15)
+                        sleep(0.5)
+                        if path.exists(crash_path):
+                            remove(crash_path)
+                        break
+
+            key_lines = []
+            if path.exists(config_path): 
+                with open(config_path, 'r') as file:
+                    lines = file.readlines()
+                    for line in lines:
+                        if line.startswith('KEY'):
+                            key_lines.append(line.strip())
+
+            pids = []     
+            with open(config_path, 'w') as file:
+                for value in windows_to_start[0]["config"]:
+                    file.write((value) + "\n")
+                for key in key_lines:
+                    file.write((key) + "\n")
+            access_time_timestamp = path.getatime(config_path)
+            process = Popen([exe_path])
+            pids.append(process.pid)
+
+            if len(windows_to_start) > 1:
+                for window in windows_to_start[1:]:
+                    while True:
+                        access_time_timestamp_new = path.getatime(config_path)
+                        if access_time_timestamp_new > access_time_timestamp:
+                            sleep(0.1)
+                            with open(config_path, 'w') as file:
+                                for value in window["config"]:
+                                    file.write((value) + "\n")
+                                for key in key_lines:
+                                    file.write((key) + "\n")
+                            access_time_timestamp = path.getatime(config_path)
+                            process = Popen([exe_path])
+                            pids.append(process.pid)
+                            break
+
+            hwnds = []
+            com = []
+            for win, pid in zip(windows_to_start,pids):
+                com.append([win["x"],win["y"],pid,win["fullscreen"]])
+
+            def winEnumHandler(hwnd, ctx):
+                if IsWindowVisible(hwnd):
+                    _, process_id = GetWindowThreadProcessId(hwnd)
+                    if process_id == ctx[2]:
+                        if ctx[3] == 0:
+                            rect = GetWindowRect(hwnd)
+                            w = rect[2] - rect[0]
+                            h = rect[3] - rect[1]
+                            MoveWindow(hwnd, ctx[0], ctx[1], w, h, True)
+                        hwnds.append(hwnd)
+                        com.remove(ctx)
+
+            while True:
+                for vals in com:
+                    EnumWindows(winEnumHandler, vals)
+                if len(pids) == len(hwnds):
+                    break
+
+            self.event_generate("<<BackgroundTaskFinished>>", when="tail")
+
+        # start opening windows
+        self.hide_all()
+        open_met = Thread(target=open_stellaria)
+        open_met.start()
+
+    # save / load json settings
+    def load_file(self):
+        if path.exists(save_path):
+            # load JSON data
+            with open(save_path, 'r') as json_file:
+                loaded_data = load(json_file)
+
+            # split to sections
+            dictionaries = loaded_data["windows"]
+            settings = loaded_data["settings"]
+
+            # set settings to loaded values
+            self.scale_optionmenu.set(settings["scale"])
+            self.update_checkbox.select() if settings["update"] == 1 else self.update_checkbox.deselect()
+            self.defaults = settings["defaults"]
+
+            if dictionaries != []:
+
+                # set windows to loaded values
+                self.set_values(dictionaries[0])
+                for window in dictionaries:
+                    self.sidebar_add_window(window)
+                self.settings_event()
+
+            else:
+                # load defaults
+                self.set_values(self.defaults)
+                self.settings_event() 
+        else:
+            # load defaults
+            self.scale_optionmenu.set("100%")
+            self.set_values(self.defaults)
+            self.settings_event() 
+    def save_file(self):
+        # save current window
+        for list in self.settings:
+            if list[0] == self.current_window:
+                list[1].update(self.get_values())
+                break
+
+        # extract dictionaries
+        dictionaries = [dictionary for _, dictionary in self.settings]
+
+        # construct settings section
+        setting = {"scale": self.scale_optionmenu.get(), "update": self.update_checkbox.get(), "defaults": self.defaults}
+
+        # combine
+        to_save = {"windows": dictionaries, "settings": setting}
+
+        # save to JSON file
+        with open(save_path, 'w') as json_file:
+            dump(to_save, json_file, indent=4)
+
+    # save on close
     def close(self):
         self.save_file()
         self.destroy()
