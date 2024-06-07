@@ -706,6 +706,14 @@ class App(customtkinter.CTk):
                         CTkMessagebox(master=self, title="Warning Message!", message=f"Please fill out all Video fields in {but[1].cget("text")}", icon="warning")
                         self.start_button.configure(state="normal")
                         return
+                    if window[1]["xend"] >= window[1]["xstart"]:
+                        CTkMessagebox(master=self, title="Warning Message!", message=f"Width start must be smaller than Width end in {but[1].cget("text")}", icon="warning")
+                        self.start_button.configure(state="normal")
+                        return
+                    if window[1]["yend"] >= window[1]["ystart"]:
+                        CTkMessagebox(master=self, title="Warning Message!", message=f"Height start must be smaller than Height end in {but[1].cget("text")}", icon="warning")
+                        self.start_button.configure(state="normal")
+                        return
                     device = self.get_monitor_values()
                     if window[1]["display"] not in device:
                         CTkMessagebox(master=self, title="Warning Message!", message=f"Please select a valid monitor in {but[1].cget("text")}", icon="warning")
