@@ -17,9 +17,9 @@ from pynput.mouse import Controller
 from json import dump, load
 
 # restart as admin if not admin
-# if not windll.shell32.IsUserAnAdmin():
-#     windll.shell32.ShellExecuteW(None, "runas", executable, " ".join(argv), None, 0x0400)
-#     exit()
+if not windll.shell32.IsUserAnAdmin():
+    windll.shell32.ShellExecuteW(None, "runas", executable, " ".join(argv), None, 0x0400)
+    exit()
 
 # setup paths
 directory = path.dirname(path.abspath(__file__))
