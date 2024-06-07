@@ -1,7 +1,7 @@
 # import dependencies
 from os import path, kill, remove
 from sys import executable, argv, exit
-from win32api import EnumDisplayMonitors, GetMonitorInfo, MonitorFromPoint
+from win32api import EnumDisplayMonitors, GetMonitorInfo
 from win32gui import IsWindowVisible, ShowWindow, EnumWindows, GetWindowRect, MoveWindow
 from win32con import SW_HIDE
 from win32process import GetWindowThreadProcessId
@@ -17,9 +17,9 @@ from pynput.mouse import Controller
 from json import dump, load
 
 # restart as admin if not admin
-if not windll.shell32.IsUserAnAdmin():
-    windll.shell32.ShellExecuteW(None, "runas", executable, " ".join(argv), None, 0x0400)
-    exit()
+# if not windll.shell32.IsUserAnAdmin():
+#     windll.shell32.ShellExecuteW(None, "runas", executable, " ".join(argv), None, 0x0400)
+#     exit()
 
 # setup paths
 directory = path.dirname(path.abspath(__file__))
@@ -815,11 +815,10 @@ class App(customtkinter.CTk):
                     read_new = io_counters_new[2]
                     write_new = io_counters_new[3]
                     if read == read_new and write == write_new:
-                        sleep(0.5)
                         kill(pidd,15)
-                        sleep(0.5)
                         if path.exists(crash_path):
                             remove(crash_path)
+                            sleep(1)
                         break
 
             key_lines = []
@@ -830,7 +829,7 @@ class App(customtkinter.CTk):
                         if line.startswith('KEY'):
                             key_lines.append(line.strip())
 
-            pids = []     
+            pids = []
             with open(config_path, 'w') as file:
                 for value in windows_to_start[0]["config"]:
                     file.write((value) + "\n")
