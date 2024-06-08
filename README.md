@@ -9,3 +9,6 @@ I recommend placing the start.bat file into your stellaria folder and then creat
 
 ## To run .exe
 Put the .exe file into your stellaria folder and run it
+
+## Pictures
+![alt text](https://github.com/smety2001/Stellaria-Advanced-Launcher/blob/main/img/launcher1.png?raw=true)
