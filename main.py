@@ -1,6 +1,6 @@
 # import dependencies
+import sys
 from os import path, kill, remove
-from sys import executable, argv, exit
 from win32api import EnumDisplayMonitors, GetMonitorInfo
 from win32gui import IsWindowVisible, ShowWindow, EnumWindows, GetWindowRect, MoveWindow
 from win32con import SW_HIDE
@@ -16,13 +16,16 @@ from CTkMessagebox import CTkMessagebox
 from pynput.mouse import Controller
 from json import dump, load
 
-# restart as admin if not admin
-if not windll.shell32.IsUserAnAdmin():
-    windll.shell32.ShellExecuteW(None, "runas", executable, " ".join(argv), None, 0x0400)
-    exit()
+# close splash screen and set directory
+if getattr(sys, "frozen", False):
+    import pyi_splash
+    pyi_splash.close()
+    directory = path.dirname(sys.executable)
+    sys.path.append(directory)
+else:
+    directory = path.dirname(path.abspath(__file__))
 
 # setup paths
-directory = path.dirname(path.abspath(__file__))
 save_path = path.join(directory, "advanced_settings.json")
 exe_path = path.join(directory, "start.exe")
 update_path = path.join(directory, ".Stellaria-launcher.exe")
