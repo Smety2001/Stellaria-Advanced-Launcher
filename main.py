@@ -687,7 +687,16 @@ class App(customtkinter.CTk):
                 CTkMessagebox(master=self, title="Warning Message!", message=f"Cannot find .Stellaria-launcher.exe, please rename your launcher", icon="warning")
                 self.start_button.configure(state="normal")
                 return
-        
+
+        # check if fullscreen is on its own
+        fs = any(d[1]['fullscreen'] == 1 and d[1]['state'] == 1 for d in self.settings)
+        if fs:
+            count = sum(d[1]['state'] == 1 for d in self.settings)
+            if count > 1:
+                CTkMessagebox(master=self, title="Warning Message!", message="Fullscreen windows can only be opened on its own, please deselect other windows", icon="warning")
+                self.start_button.configure(state="normal")
+                return  
+            
         # check values
         for window, but in zip(self.settings,self.buttons):
             if window[1]["state"] == 1:
@@ -795,7 +804,7 @@ class App(customtkinter.CTk):
                         elif window[1]["fullscreen"] == 1:
                             x = 0
                             y = 0
-                        windows_to_start.append({"x":x,"y":y,"config":combine_values(window[1]),"fullscreen":0})
+                        windows_to_start.append({"x":x,"y":y,"config":combine_values(window[1]),"fullscreen":window[1]["fullscreen"]})
 
             if self.update_checkbox.get() == 1:
                 uphwnds = []
@@ -845,7 +854,8 @@ class App(customtkinter.CTk):
                     file.write((key) + "\n")
             access_time_timestamp = path.getatime(config_path)
             process = Popen([exe_path])
-            pids.append(process.pid)
+            if windows_to_start[0]["fullscreen"] == 0:
+                pids.append(process.pid)
 
             if len(windows_to_start) > 1:
                 for window in windows_to_start[1:]:
@@ -860,23 +870,24 @@ class App(customtkinter.CTk):
                                     file.write((key) + "\n")
                             access_time_timestamp = path.getatime(config_path)
                             process = Popen([exe_path])
-                            pids.append(process.pid)
+                            if window["fullscreen"] == 0:
+                                pids.append(process.pid)
                             break
 
             hwnds = []
             com = []
             for win, pid in zip(windows_to_start,pids):
-                com.append([win["x"],win["y"],pid,win["fullscreen"]])
+                if win["fullscreen"] == 0:
+                    com.append({"x":win["x"],"y":win["y"],"pid":pid})
 
             def winEnumHandler(hwnd, ctx):
                 if IsWindowVisible(hwnd):
                     _, process_id = GetWindowThreadProcessId(hwnd)
-                    if process_id == ctx[2]:
-                        if ctx[3] == 0:
-                            rect = GetWindowRect(hwnd)
-                            w = rect[2] - rect[0]
-                            h = rect[3] - rect[1]
-                            MoveWindow(hwnd, ctx[0], ctx[1], w, h, True)
+                    if process_id == ctx["pid"]:
+                        rect = GetWindowRect(hwnd)
+                        w = rect[2] - rect[0]
+                        h = rect[3] - rect[1]
+                        MoveWindow(hwnd, ctx["x"], ctx["y"], w, h, True)
                         hwnds.append(hwnd)
                         com.remove(ctx)
 
