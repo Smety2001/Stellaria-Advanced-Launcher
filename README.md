@@ -7,7 +7,7 @@ Once you have all the dependencies installed, simply move the main.py file into 
 
 I recommend placing the start.bat file into your stellaria folder and then creating a shortcut to the start.bat file, which you then configure to always start as an admin and you also can give it the stellaria icon from start.exe
 
-## (Method 2) To run .exe
+## (Method 2) To run .exe file
 Put the .exe file into your stellaria folder and run it
 
 ## Pictures
