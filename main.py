@@ -65,6 +65,9 @@ class App(customtkinter.CTk):
         y = int(((screen_height/2) - (window_height/2)) * scale_factor)
         
         self.geometry(f"{window_width}x{window_height}+{x}+{y}")
+        self.lift()
+        self.attributes('-topmost', 1)
+        self.attributes('-topmost', 0)
 
         # configure grid layout (3 rows x 2 columns)
         self.grid_columnconfigure(1, weight=1)
