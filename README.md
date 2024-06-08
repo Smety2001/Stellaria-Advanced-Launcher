@@ -11,4 +11,8 @@ I recommend placing the start.bat file into your stellaria folder and then creat
 Put the .exe file into your stellaria folder and run it
 
 ## Pictures
-![alt text](https://github.com/smety2001/Stellaria-Advanced-Launcher/blob/main/img/launcher1.png?raw=true)
+![Launcher](https://github.com/smety2001/Stellaria-Advanced-Launcher/blob/main/img/launcher1.png?raw=true)
+
+## VirusTotal
+[VirusTotal link](https://www.virustotal.com/gui/file/a8995bbd49e16580b6bcfbb1e3234430fb1736d155b23b64d70275b647750caa/detection)
+![VirusTotal](https://github.com/smety2001/Stellaria-Advanced-Launcher/blob/main/img/virustotal.png?raw=true)
