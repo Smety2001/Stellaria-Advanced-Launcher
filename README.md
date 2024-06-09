@@ -1,14 +1,16 @@
 # Stellaria-Advanced-Launcher
 
 ## (Method 1) To run .py file
-To run the app, you need to download Python and the required libraries. This can be done manually or automatically by running the start.bat file.
+To run the app with .py file you need to download Python and the required libraries. This can be done either manually or automatically.
 
-Once you have installed all the dependencies, simply move the main.py file into your Stellaria folder. Then, run it using your preferred method (IDE, command prompt), or move the start.bat file into the Stellaria folder and run it as an administrator.
+#### Automatically
+If you choose to do it automatically, simply download the start.bat file and put it into your Stellaria folder, then run it as an admin. I recommend creating a shortcut to the start.bat file, and configuring the shortcut to always run as an administrator. You can also assign it the Stellaria icon from start.exe / .Stellaria-launcher.exe for a cleaner look.
 
-I recommend placing the start.bat file in your Stellaria folder and then creating a shortcut to the start.bat file. Configure the shortcut to always run as an administrator and assign it the Stellaria icon from start.exe.
+#### Manually
+If you choose to do it manually, then download python from the official website. While installing the Python, make sure to check the option to add python to PATH. Then open a cmd / powershell and pip install all the dependencies found in the file requirements.txt. And finally, download the main.py file, put it into your stellaria folder and open it with python.
 
 ## (Method 2) To run .exe file
-Put the .exe file into your stellaria folder and run it
+Download the Stellaria Advanced Launcher.exe file and put it into your stellaria folder, then run it.
 
 ## Pictures
 ![Launcher](https://github.com/smety2001/Stellaria-Advanced-Launcher/blob/main/img/launcher1.png?raw=true)
