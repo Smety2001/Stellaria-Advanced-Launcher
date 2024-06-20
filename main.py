@@ -1,6 +1,6 @@
 # import dependencies
 import sys
-from os import path, kill, remove
+from os import path, kill, remove, mkdir, getcwd
 from win32api import EnumDisplayMonitors, GetMonitorInfo
 from win32gui import IsWindowVisible, ShowWindow, EnumWindows, GetWindowRect, MoveWindow
 from win32con import SW_HIDE
@@ -15,6 +15,8 @@ import customtkinter
 from CTkMessagebox import CTkMessagebox
 from pynput.mouse import Controller
 from json import dump, load
+from binascii import crc32 
+from requests import get
 
 # close splash screen and set directory
 if getattr(sys, "frozen", False):
@@ -44,6 +46,54 @@ if path.exists(save_path):
 # set app theme
 customtkinter.set_appearance_mode("Dark")
 customtkinter.set_default_color_theme("blue")
+
+# setup for patcher
+patcher_serverURL = 'https://patcher.stellaria.cc/files/'
+patcher_patchlistName = 'patchlist.txt'
+patcher_userAgent = 'stellaria___USERAGENT___patcher'
+
+if not path.exists("pack"):
+    mkdir("pack")
+
+if not path.exists("lib"):
+    mkdir("lib")
+
+def Patcher_dlFile(fPath): #expects line.split()[0] // "path crc size" format -> str
+    if path.exists(fPath):
+        remove(getcwd() + "/" + fPath)
+
+    if fPath.startswith("CrashSender"):
+        print("CrashSender detected -> not downloading.\n")
+        return
+    
+    print("Downloading: "+fPath)
+    with get(patcher_serverURL + fPath, headers={'User-Agent': patcher_userAgent}, stream=True) as req:
+        file = open(fPath, "wb")
+        for chunk in req.iter_content(chunk_size=8192): 
+            file.write(chunk)
+        file.close()
+        print("Finished Downloading: "+fPath+"\n")
+        return
+
+def Patcher_crcFile(fLine):
+    if not path.exists(fLine.split()[0]):
+        return False
+    
+    file = open(fLine.split()[0], "rb")
+    crcsum = str(hex(crc32(file.read())))[2::]
+    file.close()
+
+    while True:
+        if len(crcsum) < 8:
+            crcsum = "0" + crcsum
+        else:
+            break
+
+    if crcsum == fLine.split()[1]:
+        return True
+    else:
+        return False
+
 
 # main GUI app
 class App(customtkinter.CTk):
@@ -813,36 +863,15 @@ class App(customtkinter.CTk):
                         windows_to_start.append({"x":x,"y":y,"config":combine_values(window[1]),"fullscreen":window[1]["fullscreen"]})
 
             if self.update_checkbox.get() == 1:
-                uphwnds = []
-                def updateEnumHandler(uphwnd, ctx):
-                    if IsWindowVisible(uphwnd):
-                        _, process_id = GetWindowThreadProcessId(uphwnd)
-                        if process_id == ctx:
-                            ShowWindow(uphwnd, SW_HIDE)
-                            uphwnds.append(uphwnd)
-
-                process = Popen([update_path])
-                pidd = process.pid
-                p = Process(pidd)
-                while True:
-                    EnumWindows(updateEnumHandler, pidd)
-                    if len(uphwnds) > 0:
-                        break
-
-                while True:
-                    io_counters = p.io_counters() 
-                    read = io_counters[2]
-                    write = io_counters[3]
-                    sleep(10)
-                    io_counters_new = p.io_counters() 
-                    read_new = io_counters_new[2]
-                    write_new = io_counters_new[3]
-                    if read == read_new and write == write_new:
-                        kill(pidd,15)
-                        if path.exists(crash_path):
-                            remove(crash_path)
-                            sleep(1)
-                        break
+                with get(patcher_serverURL + patcher_patchlistName, headers={'User-Agent': patcher_userAgent}) as req:
+                    patchlistLines = req.text.splitlines()
+                    for line in patchlistLines:
+                        crcBool = Patcher_crcFile(line)
+                        if crcBool == False:
+                            Patcher_dlFile(line.split()[0])
+                        else:
+                            print("Unchanged: "+line)
+                    print("\nend dl---------")
 
             key_lines = []
             if path.exists(config_path): 
