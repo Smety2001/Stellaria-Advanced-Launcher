@@ -47,54 +47,6 @@ if path.exists(save_path):
 customtkinter.set_appearance_mode("Dark")
 customtkinter.set_default_color_theme("blue")
 
-# setup for patcher
-patcher_serverURL = 'https://patcher.stellaria.cc/files/'
-patcher_patchlistName = 'patchlist.txt'
-patcher_userAgent = 'stellaria___USERAGENT___patcher'
-
-if not path.exists("pack"):
-    mkdir("pack")
-
-if not path.exists("lib"):
-    mkdir("lib")
-
-def Patcher_dlFile(fPath): #expects line.split()[0] // "path crc size" format -> str
-    if path.exists(fPath):
-        remove(getcwd() + "/" + fPath)
-
-    if fPath.startswith("CrashSender"):
-        print("CrashSender detected -> not downloading.\n")
-        return
-    
-    print("Downloading: "+fPath)
-    with get(patcher_serverURL + fPath, headers={'User-Agent': patcher_userAgent}, stream=True) as req:
-        file = open(fPath, "wb")
-        for chunk in req.iter_content(chunk_size=8192): 
-            file.write(chunk)
-        file.close()
-        print("Finished Downloading: "+fPath+"\n")
-        return
-
-def Patcher_crcFile(fLine):
-    if not path.exists(fLine.split()[0]):
-        return False
-    
-    file = open(fLine.split()[0], "rb")
-    crcsum = str(hex(crc32(file.read())))[2::]
-    file.close()
-
-    while True:
-        if len(crcsum) < 8:
-            crcsum = "0" + crcsum
-        else:
-            break
-
-    if crcsum == fLine.split()[1]:
-        return True
-    else:
-        return False
-
-
 # main GUI app
 class App(customtkinter.CTk):
     def __init__(self):
@@ -387,6 +339,16 @@ class App(customtkinter.CTk):
         # load values from file
         self.load_file()
 
+        # patcher vars
+        self.patchServerUrl = "https://patcher.stellaria.cc/files/"
+        self.patchListName  = "patchlist.txt"
+        self.patchUseragent = "stellaria___USERAGENT___patcher"
+        try:
+            self.patchListRequest = get(self.patchServerUrl + self.patchListName, headers = {'User-Agent': self.patchUseragent})
+        except:
+            print("\nPatchlist unavailable.")
+            self.patchListRequest = False
+        
     # get values for optionmenus
     def get_monitor_values(self):
         device = []
@@ -714,6 +676,40 @@ class App(customtkinter.CTk):
             return False
         return False
 
+    # Patcher funcs
+    def dlFile(self, filePath):
+        if path.exists(filePath):
+            remove(getcwd() + "/" + filePath)
+
+        if filePath.startswith("CrashSender"):
+            print("CrashSender detected -> not downloading.\n") # Maros: debug
+            return
+        
+        print("Downloading: "+filePath) # Maros: debug
+        with get(self.patchServerUrl + filePath, headers={'User-Agent': self.patchUseragent}, stream=True) as req:
+            file = open(filePath, "wb")
+            for chunk in req.iter_content(chunk_size=8192): 
+                file.write(chunk)
+            file.close()
+            print("Finished Downloading: "+filePath+"\n") # Maros: debug
+            return
+
+    def crcFile(self, fullLine):
+        if path.exists(fullLine.split()[0]) == False:
+            return False
+        
+        file = open(fullLine.split()[0], "rb")
+        crcsum = str(hex(crc32(file.read())))[2::]
+        file.close()
+
+        while True:
+            if len(crcsum) < 8:
+                crcsum = "0" + crcsum
+            else:
+                break
+
+        return crcsum == fullLine.split()[1]
+
     # start button event
     def start(self):
         self.start_button.configure(state="disabled")
@@ -863,15 +859,26 @@ class App(customtkinter.CTk):
                         windows_to_start.append({"x":x,"y":y,"config":combine_values(window[1]),"fullscreen":window[1]["fullscreen"]})
 
             if self.update_checkbox.get() == 1:
-                with get(patcher_serverURL + patcher_patchlistName, headers={'User-Agent': patcher_userAgent}) as req:
-                    patchlistLines = req.text.splitlines()
-                    for line in patchlistLines:
-                        crcBool = Patcher_crcFile(line)
-                        if crcBool == False:
-                            Patcher_dlFile(line.split()[0])
+                if self.patchListRequest:
+
+                    if not path.exists("pack"):
+                        mkdir("pack")
+
+                    if not path.exists("lib"):
+                        mkdir("lib")
+
+                    uPatchlistLines = self.patchListRequest.text.splitlines()
+
+                    for uLine in uPatchlistLines:
+                        uCrcBool = self.crcFile(uLine)
+                        if uCrcBool == False:
+                            self.dlFile(uLine.split()[0])
                         else:
-                            print("Unchanged: "+line)
-                    print("\nend dl---------")
+                            print("Unchanged: " + uLine) # Maros: debug
+                    print("\nPatching finished ---------------") # Maros: debug
+                else:
+                    print("\nPatching failed, patchlist not available.")
+                    # Maros: add warning? or check "if self.patchListRequest.status_code == 200:" earlier, and disable the update checkbox 
 
             key_lines = []
             if path.exists(config_path): 
