@@ -1,4 +1,4 @@
-# import dependencies
+﻿# import dependencies
 import sys
 from os import path, kill, remove, mkdir, getcwd
 from win32api import EnumDisplayMonitors, GetMonitorInfo
@@ -740,6 +740,9 @@ class App(customtkinter.CTk):
                 self.start_button.configure(state="normal")
                 return
 
+        if not path.exists(exe_path):
+            CTkMessagebox(master=self, title="Warning Message!", message=f"Cannot find start.exe, updating.", icon="warning")
+            
         # check if fullscreen is on its own
         fs = any(d[1]['fullscreen'] == 1 and d[1]['state'] == 1 for d in self.settings)
         if fs:
@@ -858,7 +861,7 @@ class App(customtkinter.CTk):
                             y = 0
                         windows_to_start.append({"x":x,"y":y,"config":combine_values(window[1]),"fullscreen":window[1]["fullscreen"]})
 
-            if self.update_checkbox.get() == 1:
+            if self.update_checkbox.get() == 1 or not path.exists(exe_path):
                 if self.patchListRequest:
 
                     if not path.exists("pack"):
@@ -874,11 +877,10 @@ class App(customtkinter.CTk):
                         if uCrcBool == False:
                             self.dlFile(uLine.split()[0])
                         else:
-                            print("Unchanged: " + uLine) # Maros: debug
-                    print("\nPatching finished ---------------") # Maros: debug
+                            print("Unchanged: " + uLine)
+                    print("\nPatching finished ---------------")
                 else:
                     print("\nPatching failed, patchlist not available.")
-                    # Maros: add warning? or check "if self.patchListRequest.status_code == 200:" earlier, and disable the update checkbox 
 
             key_lines = []
             if path.exists(config_path): 
