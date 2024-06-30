@@ -1,6 +1,6 @@
-# import dependencies
+﻿# import dependencies
 import sys
-from os import path, kill, remove
+from os import path, kill, remove, mkdir, getcwd
 from win32api import EnumDisplayMonitors, GetMonitorInfo
 from win32gui import IsWindowVisible, ShowWindow, EnumWindows, GetWindowRect, MoveWindow
 from win32con import SW_HIDE
@@ -15,6 +15,8 @@ import customtkinter
 from CTkMessagebox import CTkMessagebox
 from pynput.mouse import Controller
 from json import dump, load
+from binascii import crc32 
+from requests import get
 
 # close splash screen and set directory
 if getattr(sys, "frozen", False):
@@ -337,6 +339,16 @@ class App(customtkinter.CTk):
         # load values from file
         self.load_file()
 
+        # patcher vars
+        self.patchServerUrl = "https://patcher.stellaria.cc/files/"
+        self.patchListName  = "patchlist.txt"
+        self.patchUseragent = "stellaria___USERAGENT___patcher"
+        try:
+            self.patchListRequest = get(self.patchServerUrl + self.patchListName, headers = {'User-Agent': self.patchUseragent})
+        except:
+            print("\nPatchlist unavailable.")
+            self.patchListRequest = False
+        
     # get values for optionmenus
     def get_monitor_values(self):
         device = []
@@ -664,6 +676,40 @@ class App(customtkinter.CTk):
             return False
         return False
 
+    # Patcher funcs
+    def dlFile(self, filePath):
+        if path.exists(filePath):
+            remove(getcwd() + "/" + filePath)
+
+        if filePath.startswith("CrashSender"):
+            print("CrashSender detected -> not downloading.\n") # Maros: debug
+            return
+        
+        print("Downloading: "+filePath) # Maros: debug
+        with get(self.patchServerUrl + filePath, headers={'User-Agent': self.patchUseragent}, stream=True) as req:
+            file = open(filePath, "wb")
+            for chunk in req.iter_content(chunk_size=8192): 
+                file.write(chunk)
+            file.close()
+            print("Finished Downloading: "+filePath+"\n") # Maros: debug
+            return
+
+    def crcFile(self, fullLine):
+        if path.exists(fullLine.split()[0]) == False:
+            return False
+        
+        file = open(fullLine.split()[0], "rb")
+        crcsum = str(hex(crc32(file.read())))[2::]
+        file.close()
+
+        while True:
+            if len(crcsum) < 8:
+                crcsum = "0" + crcsum
+            else:
+                break
+
+        return crcsum == fullLine.split()[1]
+
     # start button event
     def start(self):
         self.start_button.configure(state="disabled")
@@ -694,6 +740,9 @@ class App(customtkinter.CTk):
                 self.start_button.configure(state="normal")
                 return
 
+        if not path.exists(exe_path):
+            CTkMessagebox(master=self, title="Warning Message!", message=f"Cannot find start.exe, updating.", icon="warning")
+            
         # check if fullscreen is on its own
         fs = any(d[1]['fullscreen'] == 1 and d[1]['state'] == 1 for d in self.settings)
         if fs:
@@ -812,37 +861,26 @@ class App(customtkinter.CTk):
                             y = 0
                         windows_to_start.append({"x":x,"y":y,"config":combine_values(window[1]),"fullscreen":window[1]["fullscreen"]})
 
-            if self.update_checkbox.get() == 1:
-                uphwnds = []
-                def updateEnumHandler(uphwnd, ctx):
-                    if IsWindowVisible(uphwnd):
-                        _, process_id = GetWindowThreadProcessId(uphwnd)
-                        if process_id == ctx:
-                            ShowWindow(uphwnd, SW_HIDE)
-                            uphwnds.append(uphwnd)
+            if self.update_checkbox.get() == 1 or not path.exists(exe_path):
+                if self.patchListRequest:
 
-                process = Popen([update_path])
-                pidd = process.pid
-                p = Process(pidd)
-                while True:
-                    EnumWindows(updateEnumHandler, pidd)
-                    if len(uphwnds) > 0:
-                        break
+                    if not path.exists("pack"):
+                        mkdir("pack")
 
-                while True:
-                    io_counters = p.io_counters() 
-                    read = io_counters[2]
-                    write = io_counters[3]
-                    sleep(10)
-                    io_counters_new = p.io_counters() 
-                    read_new = io_counters_new[2]
-                    write_new = io_counters_new[3]
-                    if read == read_new and write == write_new:
-                        kill(pidd,15)
-                        if path.exists(crash_path):
-                            remove(crash_path)
-                            sleep(1)
-                        break
+                    if not path.exists("lib"):
+                        mkdir("lib")
+
+                    uPatchlistLines = self.patchListRequest.text.splitlines()
+
+                    for uLine in uPatchlistLines:
+                        uCrcBool = self.crcFile(uLine)
+                        if uCrcBool == False:
+                            self.dlFile(uLine.split()[0])
+                        else:
+                            print("Unchanged: " + uLine)
+                    print("\nPatching finished ---------------")
+                else:
+                    print("\nPatching failed, patchlist not available.")
 
             key_lines = []
             if path.exists(config_path): 
