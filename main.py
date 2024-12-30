@@ -1,20 +1,20 @@
 # import dependencies
 import sys
-from os import path, kill, remove
+from os import path, makedirs
 from win32api import EnumDisplayMonitors, GetMonitorInfo
-from win32gui import IsWindowVisible, ShowWindow, EnumWindows, GetWindowRect, MoveWindow
-from win32con import SW_HIDE
+from win32gui import IsWindowVisible, EnumWindows, GetWindowRect, MoveWindow
 from win32process import GetWindowThreadProcessId
 from ctypes import windll, c_void_p
 from math import ceil
 from time import sleep
-from psutil import Process
 from subprocess import Popen
 from threading import Thread
 import customtkinter
 from CTkMessagebox import CTkMessagebox
 from pynput.mouse import Controller
 from json import dump, load
+from requests import get
+from zlib import crc32
 
 # close splash screen and set directory
 if getattr(sys, "frozen", False):
@@ -56,7 +56,7 @@ class App(customtkinter.CTk):
             self.wm_iconbitmap(update_path)
 
         # window size and position
-        window_width = 720
+        window_width = 800
         window_height = 500
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
@@ -228,43 +228,47 @@ class App(customtkinter.CTk):
         self.model_switch = customtkinter.CTkSwitch(self.tabview.tab("Effects"), text="Show Model Preview")
         self.model_switch.grid(row=5, column=0, sticky="nw", padx=2, pady=2)
 
+        # heromarket characters
+        self.heromarket_switch = customtkinter.CTkSwitch(self.tabview.tab("Effects"), text="Show Heromarket Characters")
+        self.heromarket_switch.grid(row=6, column=0, sticky="nw", padx=2, pady=2)
+
         # metin2 cursor
         self.cursor_switch = customtkinter.CTkSwitch(self.tabview.tab("Effects"), text="Use Stellaria Cursor")
-        self.cursor_switch.grid(row=6, column=0, sticky="nw", padx=2, pady=2)
+        self.cursor_switch.grid(row=7, column=0, sticky="nw", padx=2, pady=2)
 
         # fov
         self.fov_label = customtkinter.CTkLabel(self.tabview.tab("Effects"), text="FOV", font=self.label_font)
-        self.fov_label.grid(row=7, column=0, sticky="nw", padx=2, pady=2)
+        self.fov_label.grid(row=8, column=0, sticky="nw", padx=2, pady=2)
         self.fov_number = customtkinter.IntVar(value=0)
         self.fov_slider = customtkinter.CTkSlider(self.tabview.tab("Effects"), from_=0, to=90, number_of_steps=90, command=self.set_fov)
-        self.fov_slider.grid(row=7, column=1, sticky="ew", padx=2, pady=2)
+        self.fov_slider.grid(row=8, column=1, sticky="ew", padx=2, pady=2)
         self.fov_number_label = customtkinter.CTkLabel(self.tabview.tab("Effects"), textvariable=self.fov_number, font=self.label_font)
-        self.fov_number_label.grid(row=7, column=2, sticky="nw", padx=2, pady=2)
+        self.fov_number_label.grid(row=8, column=2, sticky="nw", padx=2, pady=2)
 
         # transparent
         self.transparent_label = customtkinter.CTkLabel(self.tabview.tab("Effects"), text="Transparency", font=self.label_font)
-        self.transparent_label.grid(row=8, column=0, sticky="nw", padx=2, pady=2)
+        self.transparent_label.grid(row=9, column=0, sticky="nw", padx=2, pady=2)
         self.transparent_number = customtkinter.DoubleVar()
         self.transparent_number_str = customtkinter.StringVar()
         self.transparent_number.trace_add("write", self.update_transparent_number_str)
         self.transparent_slider = customtkinter.CTkSlider(self.tabview.tab("Effects"), from_=0, to=1, number_of_steps=20, command=self.set_transparent)
-        self.transparent_slider.grid(row=8, column=1, sticky="ew", padx=2, pady=2)
+        self.transparent_slider.grid(row=9, column=1, sticky="ew", padx=2, pady=2)
         self.transparent_number_label = customtkinter.CTkLabel(self.tabview.tab("Effects"), textvariable=self.transparent_number_str, font=self.label_font)
-        self.transparent_number_label.grid(row=8, column=2, sticky="nw", padx=2, pady=2)
+        self.transparent_number_label.grid(row=9, column=2, sticky="nw", padx=2, pady=2)
 
         # shadows
         self.shadow_label = customtkinter.CTkLabel(self.tabview.tab("Effects"), text="Shadows", font=self.label_font)
-        self.shadow_label.grid(row=9, column=0, sticky="nw", padx=2, pady=2)
+        self.shadow_label.grid(row=10, column=0, sticky="nw", padx=2, pady=2)
         self.shadow_options = ["None", "Background", "Background + Player", "All - low", "All - Medium", "All - High"]
         self.shadow_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Effects"), width=175, values=self.shadow_options)
-        self.shadow_optionmenu.grid(row=9, column=1, sticky="nw", padx=2, pady=2)
+        self.shadow_optionmenu.grid(row=10, column=1, sticky="nw", padx=2, pady=2)
 
         # skybox
         self.skybox_label = customtkinter.CTkLabel(self.tabview.tab("Effects"), text="Skybox", font=self.label_font)
-        self.skybox_label.grid(row=10, column=0, sticky="nw", padx=2, pady=2)
+        self.skybox_label.grid(row=11, column=0, sticky="nw", padx=2, pady=2)
         self.skybox_options = ["Auto", "1", "2", "3", "4", "5", "6", "7", "8", "Original"]
         self.skybox_optionmenu = customtkinter.CTkOptionMenu(self.tabview.tab("Effects"), width=175, values=self.skybox_options)
-        self.skybox_optionmenu.grid(row=10, column=1, sticky="nw", padx=2, pady=2)
+        self.skybox_optionmenu.grid(row=11, column=1, sticky="nw", padx=2, pady=2)
 
         ### COMBAT TAB ###
         self.combat_label = customtkinter.CTkLabel(self.tabview.tab("Combat"), text="Combat", font=self.title_font)
@@ -300,6 +304,10 @@ class App(customtkinter.CTk):
         self.multidmg_switch = customtkinter.CTkSwitch(self.tabview.tab("Combat"), text="Show Multi-target Damage")
         self.multidmg_switch.grid(row=8, column=0, sticky="nw", padx=2, pady=2)
 
+        # damage meter
+        self.dmgmeter_switch = customtkinter.CTkSwitch(self.tabview.tab("Combat"), text="Show Damage Meter")
+        self.dmgmeter_switch.grid(row=9, column=0, sticky="nw", padx=2, pady=2)
+
         ### FUNCTIONAL TAB ###
         self.functional_label = customtkinter.CTkLabel(self.tabview.tab("Functional"), text="Functional", font=self.title_font)
         self.functional_label.grid(row=0, column=0, sticky="nw", padx=2, pady=2)
@@ -327,8 +335,8 @@ class App(customtkinter.CTk):
 
         # set default values
         self.defaults = {"xstart": 0, "xend": 100, "ystart": 0, "yend": 100, "fps": 60, "fullscreen": 0, "sfx": 0, "bgm": 0, "effects": 1, "names": 1, "chat": 1,
-                         "glow": 1, "model": 1, "cursor": 1, "fov": 90, "transparency": 1, "shadow": 5, "skybox": 0, "petskill": 1, "dogmode": 0, "moblvl": 1,
-                         "agromob": 1, "damage": 1, "multidmg": 1, "ime": 1, "pickup": 1, "display": "Main", "fullscreenres": "800x600", "state": 0, "name": "New Window"}
+                         "glow": 1, "model": 1, "heromarket": 0, "cursor": 1, "fov": 90, "transparency": 1, "shadow": 5, "skybox": 0, "petskill": 1, "dogmode": 0, "moblvl": 1,
+                         "agromob": 1, "damage": 1, "multidmg": 1, "dmgmeter": 1, "ime": 1, "pickup": 1, "display": "Main", "fullscreenres": "800x600", "state": 0, "name": "New Window"}
 
         # configure custom events
         self.protocol("WM_DELETE_WINDOW", self.close)
@@ -351,7 +359,8 @@ class App(customtkinter.CTk):
         all_res = ["800x600", "1024x768", "1152x864", "1280x720", "1280x768", "1280x800", "1280x960", "1280x1024", "1366x768", "1600x900", "1600x1024", "1600x1200", "1680x1050", "1920x1080", "1920x1200", "1920x1440", "2560x1440", "3840x2160"]
         possible_res = []
         for res in all_res:
-            if int(res.split("x")[0]) <= self.winfo_screenwidth():
+            width, height = res.split("x")
+            if int(width) <= self.winfo_screenwidth() and int(height) <= self.winfo_screenheight():
                 possible_res.append(res)
         return possible_res
 
@@ -391,6 +400,7 @@ class App(customtkinter.CTk):
         self.chat_switch.select() if values["chat"] == 1 else self.chat_switch.deselect()
         self.glow_switch.select() if values["glow"] == 1 else self.glow_switch.deselect()  
         self.model_switch.select() if values["model"] == 1 else self.model_switch.deselect()  
+        self.heromarket_switch.select() if values["heromarket"] == 1 else self.heromarket_switch.deselect()
         self.cursor_switch.select() if values["cursor"] == 1 else self.cursor_switch.deselect() 
         self.fov_slider.set(values["fov"])
         self.fov_number.set(values["fov"])
@@ -404,6 +414,7 @@ class App(customtkinter.CTk):
         self.agromob_switch.select() if values["agromob"] == 1 else self.agromob_switch.deselect()
         self.damage_switch.select() if values["damage"] == 1 else self.damage_switch.deselect()       
         self.multidmg_switch.select() if values["multidmg"] == 1 else self.multidmg_switch.deselect()
+        self.dmgmeter_switch.select() if values["dmgmeter"] == 1 else self.dmgmeter_switch.deselect()
         self.ime_switch.select() if values["ime"] == 1 else self.ime_switch.deselect()
         self.pickup_switch.select() if values["pickup"] == 1 else self.pickup_switch.deselect()
         self.display_optionmenu.set(values["display"])
@@ -422,6 +433,7 @@ class App(customtkinter.CTk):
                   "chat": self.chat_switch.get(),
                   "glow": self.glow_switch.get(),
                   "model": self.model_switch.get(),
+                  "heromarket": self.heromarket_switch.get(),
                   "cursor": self.cursor_switch.get(),
                   "fov": self.fov_number.get(),
                   "transparency": self.transparent_number.get(),
@@ -433,6 +445,7 @@ class App(customtkinter.CTk):
                   "agromob": self.agromob_switch.get(),
                   "damage": self.damage_switch.get(),
                   "multidmg": self.multidmg_switch.get(),
+                  "dmgmeter": self.dmgmeter_switch.get(),
                   "ime": self.ime_switch.get(),
                   "pickup": self.pickup_switch.get(),
                   "display": self.display_optionmenu.get(),
@@ -664,6 +677,63 @@ class App(customtkinter.CTk):
             return False
         return False
 
+    # patch files
+    def patch_files(self):
+        def download_patchlist(url):
+            response = get(url)
+            if response.status_code == 200:
+                return response.text
+            else:
+                return response.status_code
+        def compute_checksum(file_path):
+            hash_crc32 = 0
+            try:
+                with open(file_path, "rb") as f:
+                    while chunk := f.read(1048576):
+                        hash_crc32 = crc32(chunk, hash_crc32)
+                return format(hash_crc32 & 0xFFFFFFFF, '08x')
+            except FileNotFoundError:
+                return None
+        def compute_size(file_path):
+            try:
+                return path.getsize(file_path)
+            except FileNotFoundError:
+                return None
+        def download_file(base_url, relative_path, save_path):
+            url = f"{base_url}/{relative_path}"
+            response = get(url, stream=True)
+            if response.status_code == 200:
+                makedirs(path.dirname(save_path), exist_ok=True)
+                with open(save_path, "wb") as f:
+                    for chunk in response.iter_content(chunk_size=1048576):
+                        f.write(chunk)
+            else:
+                return response.status_code
+        def compare_and_update_files(patchlist, base_path, patch_base_url):
+            for line in patchlist.splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    file_path, remote_checksum, remote_size = line.split()
+                    remote_size = int(remote_size)
+                except ValueError:
+                    continue
+                
+                local_file_path = path.join(base_path, file_path)
+                local_checksum = compute_checksum(local_file_path)
+                local_size = compute_size(local_file_path)
+                
+                if not path.exists(local_file_path) or local_checksum != remote_checksum or local_size != remote_size:
+                    self.loading.configure(text=f"Downloading: {file_path}", font=customtkinter.CTkFont(size=30))
+                    download_file(patch_base_url, file_path, local_file_path)
+
+        patchlist_url = "https://patcher.stellaria.cc/files/patchlist.txt"
+        patch_base_url = "https://patcher.stellaria.cc/files"
+        
+        patchlist_content = download_patchlist(patchlist_url)
+        self.loading.configure(text="Comparing Files...")
+        compare_and_update_files(patchlist_content, directory, patch_base_url)
+
     # start button event
     def start(self):
         self.start_button.configure(state="disabled")
@@ -772,6 +842,7 @@ class App(customtkinter.CTk):
                         "VIEW_CHAT "+str(values["chat"]),
                         "SPECIAL_EFFECT_MODE_ITEM "+str(values["glow"]),
                         "TARGET_RENDER "+str(values["model"]),
+                        "HERO_MARKET_CHARS_VISIBLE "+str(values["heromarket"]),
                         "SOFTWARE_CURSOR "+str(1 if values["cursor"] == 0 else 0),
                         "FIELD_OF_VIEW "+str(values["fov"]),
                         "TRANSPARENT "+f"{values["transparency"]:.3f}",
@@ -783,6 +854,7 @@ class App(customtkinter.CTk):
                         "SHOW_MOBAIFLAG "+str(values["agromob"]),
                         "SHOW_DAMAGE "+str(values["damage"]),
                         "SHOW_MULTIPLE_DAMAGE "+str(values["multidmg"]),
+                        "SHOW_DAMAGE_METER "+str(values["dmgmeter"]),
                         "USE_DEFAULT_IME "+str(1 if values["ime"] == 0 else 0),
                         "PICKUP_ALL_ONCE "+str(values["pickup"]),
                         "VISIBILITY 3",
@@ -813,37 +885,9 @@ class App(customtkinter.CTk):
                         windows_to_start.append({"x":x,"y":y,"config":combine_values(window[1]),"fullscreen":window[1]["fullscreen"]})
 
             if self.update_checkbox.get() == 1:
-                uphwnds = []
-                def updateEnumHandler(uphwnd, ctx):
-                    if IsWindowVisible(uphwnd):
-                        _, process_id = GetWindowThreadProcessId(uphwnd)
-                        if process_id == ctx:
-                            ShowWindow(uphwnd, SW_HIDE)
-                            uphwnds.append(uphwnd)
+                self.patch_files()
 
-                process = Popen([update_path])
-                pidd = process.pid
-                p = Process(pidd)
-                while True:
-                    EnumWindows(updateEnumHandler, pidd)
-                    if len(uphwnds) > 0:
-                        break
-
-                while True:
-                    io_counters = p.io_counters() 
-                    read = io_counters[2]
-                    write = io_counters[3]
-                    sleep(10)
-                    io_counters_new = p.io_counters() 
-                    read_new = io_counters_new[2]
-                    write_new = io_counters_new[3]
-                    if read == read_new and write == write_new:
-                        kill(pidd,15)
-                        if path.exists(crash_path):
-                            remove(crash_path)
-                            sleep(1)
-                        break
-
+            self.loading.configure(text="Opening Metin2... Please wait")
             key_lines = []
             if path.exists(config_path): 
                 with open(config_path, 'r') as file:
@@ -906,6 +950,7 @@ class App(customtkinter.CTk):
             self.event_generate("<<BackgroundTaskFinished>>", when="tail")
 
         # start opening windows
+        self.loading.configure(text="Starting... Please Wait")
         self.hide_all()
         open_met = Thread(target=open_stellaria)
         open_met.start()
@@ -920,6 +965,12 @@ class App(customtkinter.CTk):
             # split to sections
             dictionaries = loaded_data["windows"]
             settings = loaded_data["settings"]
+
+            # load default values for new fields
+            for dictionary in dictionaries:
+                for key, default_value in self.defaults.items():
+                    if key not in dictionary:
+                        dictionary[key] = default_value
 
             # set settings to loaded values
             self.scale_optionmenu.set(settings["scale"])
