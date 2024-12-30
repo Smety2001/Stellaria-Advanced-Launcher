@@ -1,5 +1,6 @@
 pywin32
-psutil
 customtkinter
 CTkMessagebox
 pynput
+zlib
+requests
